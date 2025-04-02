@@ -56,7 +56,9 @@ export default function Goals() {
   const goalFormSchema = insertGoalSchema
     .omit({ userId: true })
     .extend({
-      targetDate: z.string().optional(),
+      targetDate: z.coerce.date({
+        invalid_type_error: "That's not a valid date!",
+      }).optional(),
     });
 
   type GoalFormValues = z.infer<typeof goalFormSchema>;
@@ -68,7 +70,7 @@ export default function Goals() {
       name: "",
       targetAmount: 0,
       currentAmount: 0,
-      targetDate: "",
+      targetDate: undefined,
       category: "",
       icon: "",
     },
@@ -77,13 +79,8 @@ export default function Goals() {
   // Goal mutations
   const createMutation = useMutation({
     mutationFn: async (data: GoalFormValues) => {
-      // Convert the string date to a proper Date object if it exists
-      const formattedData = {
-        ...data,
-        targetDate: data.targetDate ? new Date(data.targetDate) : undefined,
-      };
-      
-      const res = await apiRequest("POST", "/api/goals", formattedData);
+      // Date is already proper type because of z.coerce.date()
+      const res = await apiRequest("POST", "/api/goals", data);
       return await res.json();
     },
     onSuccess: () => {
@@ -115,7 +112,8 @@ export default function Goals() {
       const goal = goals?.find(g => g.id === id);
       if (!goal) throw new Error("Goal not found");
       
-      const newAmount = goal.currentAmount + amount;
+      const currentAmount = goal.currentAmount || 0;
+      const newAmount = currentAmount + amount;
       const res = await apiRequest("PUT", `/api/goals/${id}`, {
         currentAmount: newAmount
       });
@@ -328,7 +326,13 @@ export default function Goals() {
                         <FormItem>
                           <FormLabel>Target Date (Optional)</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input 
+                              type="date" 
+                              {...field}
+                              value={field.value instanceof Date 
+                                ? field.value.toISOString().split('T')[0] 
+                                : field.value as string} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -392,8 +396,9 @@ export default function Goals() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {goals && goals.length > 0 ? (
                 goals.map((goal) => {
-                  const progress = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
-                  const isCompleted = goal.currentAmount >= goal.targetAmount;
+                  const currentAmount = goal.currentAmount || 0;
+                  const progress = Math.min(100, (currentAmount / goal.targetAmount) * 100);
+                  const isCompleted = currentAmount >= goal.targetAmount;
                   const daysRemaining = getDaysRemaining(goal.targetDate);
                   
                   return (
@@ -418,7 +423,7 @@ export default function Goals() {
                         <div className="mt-2">
                           <div className="flex justify-between items-end mb-1">
                             <p className="text-sm text-gray-500">
-                              Saved {formatCurrency(goal.currentAmount)}
+                              Saved {formatCurrency(currentAmount)}
                             </p>
                             <p className="text-sm font-medium">
                               {formatCurrency(goal.targetAmount)}
