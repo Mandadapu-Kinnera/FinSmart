@@ -28,7 +28,7 @@ export const transactions = pgTable("transactions", {
   amount: doublePrecision("amount").notNull(),
   description: text("description").notNull(),
   categoryId: integer("category_id"),
-  date: timestamp("date").defaultNow(),
+  date: timestamp("date").notNull().defaultNow(),
   isExpense: boolean("is_expense").default(true),
   merchant: text("merchant"),
   type: text("type").default("expense").notNull() // income or expense

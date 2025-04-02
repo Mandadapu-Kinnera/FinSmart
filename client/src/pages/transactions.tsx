@@ -62,7 +62,7 @@ export default function Transactions() {
   const { data: transactions, isLoading: transactionsLoading } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
   });
-  
+
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
@@ -83,7 +83,7 @@ export default function Transactions() {
       amount: 0,
       description: "",
       isExpense: true,
-      date: new Date().toISOString().split("T")[0],
+      date: new Date(),
       merchant: "",
     },
   });
@@ -95,7 +95,7 @@ export default function Transactions() {
       amount: 0,
       description: "",
       isExpense: true,
-      date: new Date().toISOString().split("T")[0],
+      date: new Date(),
       merchant: "",
     },
   });
@@ -181,11 +181,11 @@ export default function Transactions() {
 
   const handleEditClick = (transaction: Transaction) => {
     setCurrentTransaction(transaction);
-    
+
     // Convert date format for input
     const dateObj = new Date(transaction.date);
     const formattedDate = dateObj.toISOString().split("T")[0];
-    
+
     editForm.reset({
       amount: transaction.amount,
       description: transaction.description,
@@ -194,7 +194,7 @@ export default function Transactions() {
       date: formattedDate,
       merchant: transaction.merchant || "",
     });
-    
+
     setIsEditOpen(true);
   };
 
@@ -207,14 +207,14 @@ export default function Transactions() {
   // Filter transactions by search term
   const filteredTransactions = transactions?.filter(transaction => {
     if (!searchTerm) return true;
-    
+
     const searchLower = searchTerm.toLowerCase();
     const descriptionMatch = transaction.description.toLowerCase().includes(searchLower);
     const merchantMatch = transaction.merchant?.toLowerCase().includes(searchLower);
-    
+
     const category = categories?.find(c => c.id === transaction.categoryId);
     const categoryMatch = category?.name.toLowerCase().includes(searchLower);
-    
+
     return descriptionMatch || merchantMatch || categoryMatch;
   });
 
@@ -244,7 +244,7 @@ export default function Transactions() {
             <ChartLine className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-bold text-gray-900 hidden md:inline-block">FinSmart</h1>
           </div>
-          
+
           <div className="flex items-center">
             <Button 
               variant="ghost" 
@@ -283,7 +283,7 @@ export default function Transactions() {
                 Manage and track your financial transactions
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
@@ -305,7 +305,7 @@ export default function Transactions() {
                   <DialogHeader>
                     <DialogTitle>Add New Transaction</DialogTitle>
                   </DialogHeader>
-                  
+
                   <Form {...addForm}>
                     <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-4">
                       <FormField
@@ -321,7 +321,7 @@ export default function Transactions() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={addForm.control}
                         name="merchant"
@@ -533,7 +533,7 @@ export default function Transactions() {
               <DialogHeader>
                 <DialogTitle>Edit Transaction</DialogTitle>
               </DialogHeader>
-              
+
               <Form {...editForm}>
                 <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
                   <FormField
@@ -549,7 +549,7 @@ export default function Transactions() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={editForm.control}
                     name="merchant"

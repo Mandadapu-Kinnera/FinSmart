@@ -172,7 +172,7 @@ export class MemStorage implements IStorage {
       amount: transaction.amount,
       description: transaction.description,
       type: transaction.type || 'expense',
-      date: transaction.date || new Date(),
+      date: new Date(transaction.date || new Date()),
       categoryId: transaction.categoryId || null,
       isExpense: transaction.isExpense || null,
       merchant: transaction.merchant || null
