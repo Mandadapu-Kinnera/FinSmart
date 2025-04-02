@@ -381,7 +381,7 @@ export default function Transactions() {
                                   {...field}
                                   value={field.value instanceof Date 
                                     ? field.value.toISOString().split('T')[0] 
-                                    : field.value as string} 
+                                    : ""} 
                                 />
                               </FormControl>
                               <FormMessage />
@@ -615,7 +615,7 @@ export default function Transactions() {
                               {...field}
                               value={field.value instanceof Date 
                                 ? field.value.toISOString().split('T')[0] 
-                                : field.value as string} 
+                                : ""} 
                             />
                           </FormControl>
                           <FormMessage />

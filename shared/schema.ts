@@ -90,9 +90,13 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true
 });
 
-export const insertTransactionSchema = createInsertSchema(transactions).omit({
-  id: true
-});
+export const insertTransactionSchema = createInsertSchema(transactions)
+  .omit({
+    id: true
+  })
+  .extend({
+    date: z.coerce.date()
+  });
 
 export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true
@@ -102,17 +106,29 @@ export const insertBudgetSchema = createInsertSchema(budgets).omit({
   id: true
 });
 
-export const insertBillSchema = createInsertSchema(bills).omit({
-  id: true
-});
+export const insertBillSchema = createInsertSchema(bills)
+  .omit({
+    id: true
+  })
+  .extend({
+    dueDate: z.coerce.date()
+  });
 
-export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
-  id: true
-});
+export const insertSubscriptionSchema = createInsertSchema(subscriptions)
+  .omit({
+    id: true
+  })
+  .extend({
+    nextBillingDate: z.coerce.date().nullable()
+  });
 
-export const insertGoalSchema = createInsertSchema(goals).omit({
-  id: true
-});
+export const insertGoalSchema = createInsertSchema(goals)
+  .omit({
+    id: true
+  })
+  .extend({
+    targetDate: z.coerce.date().nullable()
+  });
 
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;
