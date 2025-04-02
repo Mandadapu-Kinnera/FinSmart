@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/currency";
 import { Loader2, Calendar, Check } from "lucide-react";
 import { format, isAfter, isBefore, addDays } from "date-fns";
+import { Link } from "wouter";
 
 export function UpcomingBills() {
   // Fetch bills data
@@ -57,12 +58,12 @@ export function UpcomingBills() {
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-gray-500 mb-4">No pending bills found</p>
-            <a 
-              href="/bills" 
+            <Link 
+              to="/bills" 
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             >
               Manage Bills
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -108,12 +109,12 @@ export function UpcomingBills() {
           
           {sortedBills.length > 0 && (
             <div className="pt-3 text-center">
-              <a 
-                href="/bills" 
+              <Link 
+                to="/bills" 
                 className="text-primary hover:text-primary/90 text-sm font-medium inline-flex items-center"
               >
                 View All Bills <Check className="ml-1 h-4 w-4" />
-              </a>
+              </Link>
             </div>
           )}
         </div>

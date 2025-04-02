@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/currency";
 import { Loader2, Calendar, CreditCard } from "lucide-react";
 import { format, addMonths } from "date-fns";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { Link } from "wouter";
 
 // Colors for pie chart
 const COLORS = ['#4f46e5', '#0ea5e9', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6'];
@@ -112,12 +113,12 @@ export function SubscriptionOverview() {
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-gray-500 mb-4">No subscriptions added yet</p>
-            <a 
-              href="/subscriptions" 
+            <Link 
+              to="/subscriptions" 
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             >
               Add Subscription
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -201,12 +202,12 @@ export function SubscriptionOverview() {
         </div>
         
         <div className="mt-6 text-center">
-          <a 
-            href="/subscriptions" 
+          <Link 
+            to="/subscriptions" 
             className="text-primary hover:text-primary/90 text-sm font-medium inline-flex items-center"
           >
             Manage All Subscriptions <CreditCard className="ml-1 h-4 w-4" />
-          </a>
+          </Link>
         </div>
       </CardContent>
     </Card>
