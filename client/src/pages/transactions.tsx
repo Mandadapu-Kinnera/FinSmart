@@ -71,7 +71,10 @@ export default function Transactions() {
   const transactionFormSchema = insertTransactionSchema
     .omit({ userId: true })
     .extend({
-      date: z.string().min(1, "Date is required"),
+      date: z.coerce.date({
+        required_error: "Date is required",
+        invalid_type_error: "That's not a date!",
+      }),
     });
 
   type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -170,20 +173,20 @@ export default function Transactions() {
 
   // Form submission handlers
   const onAddSubmit = (data: TransactionFormValues) => {
-    // Format the date string to a proper Date object
+    // Create a mutation-ready copy of the data
     const formattedData = {
       ...data,
-      date: new Date(data.date).toISOString()
+      userId: 1, // Use the actual user ID from auth context in production
     };
     createMutation.mutate(formattedData);
   };
 
   const onEditSubmit = (data: TransactionFormValues) => {
     if (currentTransaction) {
-      // Format the date string to a proper Date object
+      // Create a mutation-ready copy of the data
       const formattedData = {
         ...data,
-        date: new Date(data.date).toISOString()
+        userId: currentTransaction.userId,
       };
       updateMutation.mutate({ id: currentTransaction.id, data: formattedData });
     }
@@ -192,16 +195,15 @@ export default function Transactions() {
   const handleEditClick = (transaction: Transaction) => {
     setCurrentTransaction(transaction);
 
-    // Convert date format for input
+    // Convert date to Date object for the form
     const dateObj = new Date(transaction.date);
-    const formattedDate = dateObj.toISOString().split("T")[0];
 
     editForm.reset({
       amount: transaction.amount,
       description: transaction.description,
       categoryId: transaction.categoryId,
-      isExpense: transaction.isExpense,
-      date: formattedDate,
+      isExpense: transaction.isExpense || false,
+      date: dateObj,
       merchant: transaction.merchant || "",
     });
 
@@ -374,7 +376,13 @@ export default function Transactions() {
                             <FormItem>
                               <FormLabel>Date</FormLabel>
                               <FormControl>
-                                <Input type="date" {...field} />
+                                <Input 
+                                  type="date" 
+                                  {...field}
+                                  value={field.value instanceof Date 
+                                    ? field.value.toISOString().split('T')[0] 
+                                    : field.value as string} 
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -602,7 +610,13 @@ export default function Transactions() {
                         <FormItem>
                           <FormLabel>Date</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input 
+                              type="date" 
+                              {...field}
+                              value={field.value instanceof Date 
+                                ? field.value.toISOString().split('T')[0] 
+                                : field.value as string} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
