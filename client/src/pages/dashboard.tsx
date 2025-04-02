@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
 import { NotificationPanel } from "@/components/ui/notification-panel";
 import SummaryCards from "@/components/dashboard/summary-cards";
@@ -9,15 +9,24 @@ import AiRecommendations from "@/components/dashboard/ai-recommendations";
 import UpcomingBills from "@/components/dashboard/upcoming-bills";
 import SubscriptionOverview from "@/components/dashboard/subscription-overview";
 import IncomeExpenseGraph from "@/components/dashboard/income-expense-graph";
+import { BillPaymentAlert } from "@/components/bill-payment-alert";
 import { useAuth } from "@/hooks/use-auth";
 import { Bell, Menu, ChartLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { Bill } from "@shared/schema";
 
 export default function Dashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const { user } = useAuth();
+
+  // Fetch bills for the alarm system
+  const { data: bills } = useQuery<Bill[]>({
+    queryKey: ["/api/bills"],
+    enabled: !!user // Only fetch if user is logged in
+  });
 
   // User initials from name or username
   const userInitials = user?.firstName && user?.lastName 
@@ -121,6 +130,11 @@ export default function Dashboard() {
           </div>
         </main>
       </div>
+
+      {/* Bill Payment Alarms */}
+      {bills && bills.length > 0 && (
+        <BillPaymentAlert bills={bills} />
+      )}
 
       {/* Notifications Panel */}
       <NotificationPanel 

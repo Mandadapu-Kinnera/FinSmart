@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Bill, insertBillSchema } from "@shared/schema";
@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { BillPaymentAlert } from "@/components/bill-payment-alert";
 import {
   Card,
   CardContent,
@@ -70,12 +71,15 @@ export default function Bills() {
     { name: "Insurance", icon: <Receipt className="h-4 w-4" /> },
   ];
 
-  // Improved bill form schema with validation
-  const billFormSchema = insertBillSchema
-    .omit({ userId: true })
-    .extend({
-      dueDate: z.string().min(1, "Due date is required"),
-    });
+  // Define a complete validation schema matching the server model
+  const billFormSchema = z.object({
+    name: z.string().min(1, "Bill name is required"),
+    amount: z.number().min(0, "Amount must be a positive number"),
+    dueDate: z.string().min(1, "Due date is required"),
+    isPaid: z.boolean().default(false),
+    category: z.string().min(1, "Category is required"),
+    icon: z.string().optional(),
+  });
 
   type BillFormValues = z.infer<typeof billFormSchema>;
 
@@ -88,6 +92,7 @@ export default function Bills() {
       dueDate: new Date().toISOString().split("T")[0],
       isPaid: false,
       category: "Utilities",
+      icon: "receipt",
     },
   });
 
@@ -100,15 +105,25 @@ export default function Bills() {
       dueDate: new Date().toISOString().split("T")[0],
       isPaid: false,
       category: "Utilities",
+      icon: "receipt",
     },
   });
 
   // Bill mutations
   const createMutation = useMutation({
     mutationFn: async (data: BillFormValues) => {
-      // Convert the string date to a proper Date object
+      // Convert the string date to a proper Date object and add icon based on category
+      const iconMap: Record<string, string> = {
+        'Housing': 'home',
+        'Utilities': 'zap',
+        'Internet': 'wifi',
+        'Transportation': 'car',
+        'Insurance': 'receipt'
+      };
+      
       const formattedData = {
         ...data,
+        icon: iconMap[data.category] || 'receipt',
         dueDate: new Date(data.dueDate),
       };
       
@@ -135,9 +150,18 @@ export default function Bills() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: BillFormValues }) => {
-      // Convert the string date to a proper Date object
+      // Convert the string date to a proper Date object and add icon based on category
+      const iconMap: Record<string, string> = {
+        'Housing': 'home',
+        'Utilities': 'zap',
+        'Internet': 'wifi',
+        'Transportation': 'car',
+        'Insurance': 'receipt'
+      };
+      
       const formattedData = {
         ...data,
+        icon: iconMap[data.category] || 'receipt',
         dueDate: new Date(data.dueDate),
       };
       
@@ -755,6 +779,11 @@ export default function Bills() {
           </Dialog>
         </main>
       </div>
+      
+      {/* Bill Payment Alarms */}
+      {bills && bills.length > 0 && (
+        <BillPaymentAlert bills={bills} />
+      )}
     </div>
   );
 }
