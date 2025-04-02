@@ -1,14 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
 import { NotificationPanel } from "@/components/ui/notification-panel";
-import SummaryCards from "@/components/dashboard/summary-cards";
-import SpendingAnalytics from "@/components/dashboard/spending-analytics";
-import CategoryBreakdown from "@/components/dashboard/category-breakdown";
-import RecentTransactions from "@/components/dashboard/recent-transactions";
-import AiRecommendations from "@/components/dashboard/ai-recommendations";
-import UpcomingBills from "@/components/dashboard/upcoming-bills";
-import SubscriptionOverview from "@/components/dashboard/subscription-overview";
-import IncomeExpenseGraph from "@/components/dashboard/income-expense-graph";
+import { IncomeExpenseGraph } from "@/components/dashboard/income-expense-graph";
+import { BudgetOverview } from "@/components/dashboard/budget-overview";
+import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
+import { SubscriptionOverview } from "@/components/dashboard/subscription-overview";
 import { BillPaymentAlert } from "@/components/bill-payment-alert";
 import { useAuth } from "@/hooks/use-auth";
 import { Bell, Menu, ChartLine } from "lucide-react";
@@ -102,23 +98,10 @@ export default function Dashboard() {
 
           {/* Dashboard Content */}
           <div className="pt-6 space-y-8">
-            <SummaryCards />
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <SpendingAnalytics />
-              </div>
-              <div>
-                <CategoryBreakdown />
-              </div>
-            </div>
-            
             <IncomeExpenseGraph />
             
-            <RecentTransactions />
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AiRecommendations />
+              <BudgetOverview />
               <UpcomingBills />
             </div>
             

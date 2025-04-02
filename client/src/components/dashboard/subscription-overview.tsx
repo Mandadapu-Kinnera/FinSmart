@@ -1,215 +1,213 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Subscription } from "@shared/schema";
-import { ArrowUpRight, Lightbulb, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { FaYoutube, FaSpotify, FaDumbbell, FaFilm, FaAmazon } from "react-icons/fa";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/currency";
+import { Loader2, Calendar, CreditCard } from "lucide-react";
+import { format, addMonths } from "date-fns";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
-export default function SubscriptionOverview() {
+// Colors for pie chart
+const COLORS = ['#4f46e5', '#0ea5e9', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6'];
+
+export function SubscriptionOverview() {
+  // Fetch subscription data
   const { data: subscriptions, isLoading } = useQuery<Subscription[]>({
     queryKey: ["/api/subscriptions"],
   });
-
-  // Helper function to get subscription icon
-  const getSubscriptionIcon = (name: string) => {
-    const nameLower = name.toLowerCase();
-    
-    if (nameLower.includes('youtube')) return <FaYoutube className="text-red-600" />;
-    if (nameLower.includes('spotify')) return <FaSpotify className="text-green-600" />;
-    if (nameLower.includes('netflix')) return <FaFilm className="text-red-600" />;
-    if (nameLower.includes('amazon')) return <FaAmazon className="text-blue-600" />;
-    if (nameLower.includes('fitness') || nameLower.includes('gym')) return <FaDumbbell className="text-purple-600" />;
-    
-    // Default icon
-    return <FaYoutube className="text-gray-600" />;
-  };
-
-  // Helper function to get subscription status badge
-  const getStatusBadge = (status: string, usage?: string) => {
-    if (usage === 'low') {
-      return (
-        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-          Low usage
-        </Badge>
-      );
-    }
-    
-    switch (status) {
-      case 'active':
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-            Active
-          </Badge>
-        );
-      case 'paused':
-        return (
-          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">
-            Paused
-          </Badge>
-        );
-      case 'cancelled':
-        return (
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
-            Cancelled
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-            Active
-          </Badge>
-        );
-    }
-  };
-
-  // Format the price
-  const formatPrice = (amount: number, cycle: string) => {
-    const formattedAmount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount);
-    
-    return `${formattedAmount} ${cycle === 'monthly' ? '/month' : '/year'}`;
-  };
-
-  // Demo subscriptions if no data
-  const demoSubscriptions = [
-    {
-      id: 1,
-      name: "YouTube Premium",
-      category: "Entertainment",
-      status: "active",
-      amount: 11.99,
-      billingCycle: "monthly",
-      icon: <FaYoutube className="text-red-600" />
-    },
-    {
-      id: 2,
-      name: "Spotify",
-      category: "Music",
-      status: "active",
-      amount: 9.99,
-      billingCycle: "monthly",
-      icon: <FaSpotify className="text-green-600" />
-    },
-    {
-      id: 3,
-      name: "Fitness Plus",
-      category: "Health",
-      status: "low-usage",
-      amount: 14.99,
-      billingCycle: "monthly",
-      icon: <FaDumbbell className="text-purple-600" />
-    }
-  ];
-
+  
   // Calculate total monthly subscription cost
-  const calculateTotalCost = () => {
-    if (!subscriptions || subscriptions.length === 0) {
-      // Return demo total if no subscriptions
-      return demoSubscriptions.reduce((sum, sub) => sum + sub.amount, 0);
-    }
+  const calculateMonthlyCost = () => {
+    if (!subscriptions || subscriptions.length === 0) return 0;
     
-    return subscriptions.reduce((sum, sub) => {
-      if (sub.status === 'active') {
-        if (sub.billingCycle === 'yearly') {
-          return sum + (sub.amount / 12); // Convert yearly to monthly
-        }
-        return sum + sub.amount;
-      }
-      return sum;
+    return subscriptions.reduce((total, subscription) => {
+      // Convert yearly subscriptions to monthly equivalent
+      const monthlyCost = subscription.billingCycle === 'yearly' 
+        ? subscription.amount / 12 
+        : subscription.amount;
+        
+      return total + monthlyCost;
     }, 0);
   };
-
-  const totalMonthlyCost = calculateTotalCost();
-
+  
+  // Group subscriptions by category for pie chart
+  const prepareChartData = () => {
+    if (!subscriptions || subscriptions.length === 0) return [];
+    
+    const categories: Record<string, number> = {};
+    
+    subscriptions.forEach(subscription => {
+      const category = subscription.category || 'Other';
+      const monthlyCost = subscription.billingCycle === 'yearly' 
+        ? subscription.amount / 12 
+        : subscription.amount;
+        
+      categories[category] = (categories[category] || 0) + monthlyCost;
+    });
+    
+    return Object.entries(categories).map(([name, value]) => ({
+      name,
+      value
+    }));
+  };
+  
+  const totalMonthlyCost = calculateMonthlyCost();
+  const chartData = prepareChartData();
+  
+  // Find the next upcoming payment
+  const getNextPayment = () => {
+    if (!subscriptions || subscriptions.length === 0) return null;
+    
+    const today = new Date();
+    const nextPayments = subscriptions
+      .map(subscription => {
+        let nextDate = subscription.nextBillingDate 
+          ? new Date(subscription.nextBillingDate) 
+          : addMonths(today, 1); // Default to one month from now if no date
+          
+        return {
+          name: subscription.name,
+          date: nextDate,
+          amount: subscription.amount,
+          cycle: subscription.billingCycle
+        };
+      })
+      .filter(payment => payment.date > today)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+      
+    return nextPayments.length > 0 ? nextPayments[0] : null;
+  };
+  
+  const nextPayment = getNextPayment();
+  
+  // Custom tooltip for pie chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-2 border shadow-sm rounded-md">
+          <p className="font-medium">{payload[0].name}</p>
+          <p className="text-primary">{formatCurrency(payload[0].value)}/month</p>
+        </div>
+      );
+    }
+    return null;
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!subscriptions || subscriptions.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Subscription Management</CardTitle>
+          <CardDescription>
+            Track your recurring subscriptions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-gray-500 mb-4">No subscriptions added yet</p>
+            <a 
+              href="/subscriptions" 
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            >
+              Add Subscription
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-semibold">
-            Subscription Management
-          </CardTitle>
-          <Link href="/subscriptions">
-            <a className="text-primary text-sm hover:underline flex items-center">
-              <span>View All</span>
-              <ArrowUpRight className="ml-1 h-4 w-4" />
-            </a>
-          </Link>
-        </div>
+      <CardHeader>
+        <CardTitle>Subscription Management</CardTitle>
+        <CardDescription>
+          Track your recurring subscriptions
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="h-64 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(subscriptions && subscriptions.length > 0 ? 
-                subscriptions.slice(0, 3) : 
-                demoSubscriptions
-              ).map((subscription) => (
-                <div 
-                  key={subscription.id} 
-                  className="border border-gray-200 rounded-lg p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="bg-gray-100 p-2 rounded-lg mr-3">
-                        {subscription.icon || getSubscriptionIcon(subscription.name)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{subscription.name}</p>
-                        <p className="text-xs text-gray-500">{subscription.category}</p>
-                      </div>
-                    </div>
-                    {getStatusBadge(subscription.status, 
-                      subscription.name === "Fitness Plus" ? "low" : undefined)}
-                  </div>
-                  <div className="mt-3 flex justify-between items-center">
-                    <p className="font-semibold text-gray-900">
-                      {typeof subscription.amount === 'number' 
-                        ? formatPrice(subscription.amount, subscription.billingCycle) 
-                        : subscription.amount}
-                    </p>
-                    <Button 
-                      variant="link" 
-                      className="text-xs text-red-500 font-medium p-0 h-auto hover:no-underline"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-lg font-medium mb-3">Monthly Breakdown</h3>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-500">Total Monthly Cost</p>
+              <p className="text-2xl font-bold text-primary">
+                {formatCurrency(totalMonthlyCost)}/month
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Across {subscriptions.length} subscription{subscriptions.length !== 1 ? 's' : ''}
+              </p>
             </div>
             
-            <div className="mt-5 bg-blue-50 p-4 rounded-lg border border-blue-100">
-              <div className="flex items-start">
-                <div className="bg-primary bg-opacity-10 p-2 rounded-full mr-3 flex-shrink-0">
-                  <Lightbulb className="h-5 w-5 text-primary" />
+            {nextPayment && (
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 text-blue-500" />
+                  <h4 className="font-medium text-blue-800">Next Payment</h4>
                 </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Subscription Insight</h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    You're spending ${totalMonthlyCost.toFixed(2)}/month on subscriptions. 
-                    {totalMonthlyCost > 50 ? " We found a potential savings of $14.99 based on usage patterns." : 
-                      " Your subscription spending is well-managed."}
-                  </p>
-                  <Button 
-                    variant="link" 
-                    className="mt-2 text-xs text-primary font-medium p-0 h-auto"
-                  >
-                    See recommendations
-                  </Button>
+                <div className="mt-2">
+                  <p className="font-medium">{nextPayment.name}</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-sm text-gray-600">
+                      {format(nextPayment.date, "MMMM d, yyyy")}
+                    </p>
+                    <p className="font-medium">
+                      {formatCurrency(nextPayment.amount)}
+                    </p>
+                  </div>
                 </div>
               </div>
+            )}
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-medium mb-3">Category Distribution</h3>
+            <div className="h-48">
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={70}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-gray-500">No category data available</p>
+                </div>
+              )}
             </div>
-          </>
-        )}
+          </div>
+        </div>
+        
+        <div className="mt-6 text-center">
+          <a 
+            href="/subscriptions" 
+            className="text-primary hover:text-primary/90 text-sm font-medium inline-flex items-center"
+          >
+            Manage All Subscriptions <CreditCard className="ml-1 h-4 w-4" />
+          </a>
+        </div>
       </CardContent>
     </Card>
   );

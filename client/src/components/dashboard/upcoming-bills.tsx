@@ -1,197 +1,122 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "wouter";
-import { ArrowUpRight, Home, Zap, Wifi, Car } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Bill } from "@shared/schema";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/currency";
+import { Loader2, Calendar, Check } from "lucide-react";
+import { format, isAfter, isBefore, addDays } from "date-fns";
 
-export default function UpcomingBills() {
+export function UpcomingBills() {
+  // Fetch bills data
   const { data: bills, isLoading } = useQuery<Bill[]>({
     queryKey: ["/api/bills"],
   });
-
-  // Helper function to get bill icon
-  const getBillIcon = (category: string) => {
-    switch (category) {
-      case 'Housing':
-        return <Home className="text-red-600" />;
-      case 'Utilities':
-        return <Zap className="text-yellow-600" />;
-      case 'Internet':
-        return <Wifi className="text-blue-600" />;
-      case 'Transportation':
-        return <Car className="text-green-600" />;
-      default:
-        return <Home className="text-gray-600" />;
-    }
-  };
-
-  // Helper function to get background color
-  const getBgColor = (category: string) => {
-    switch (category) {
-      case 'Housing':
-        return "bg-red-100";
-      case 'Utilities':
-        return "bg-yellow-100";
-      case 'Internet':
-        return "bg-blue-100";
-      case 'Transportation':
-        return "bg-green-100";
-      default:
-        return "bg-gray-100";
-    }
-  };
-
-  // Calculate days remaining until the due date
-  const getDaysRemaining = (dueDate: Date | string) => {
+  
+  // Sort and filter bills
+  const sortedBills = bills?.filter(bill => !bill.isPaid)
+    .sort((a, b) => {
+      const dateA = new Date(a.dueDate);
+      const dateB = new Date(b.dueDate);
+      return dateA.getTime() - dateB.getTime();
+    })
+    .slice(0, 5); // Show only 5 upcoming bills
+  
+  // Get the bill status
+  const getBillStatus = (dueDate: Date) => {
     const today = new Date();
-    const due = new Date(dueDate);
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const dueDateObj = new Date(dueDate);
     
-    return diffDays;
-  };
-
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
-
-  // Sort bills by due date and take the next 4
-  const getUpcomingBills = () => {
-    if (!bills) return [];
-    
-    return [...bills]
-      .filter(bill => !bill.isPaid)
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-      .slice(0, 4);
-  };
-
-  const upcomingBills = getUpcomingBills();
-
-  // Demo bills if no data
-  const demoBills = [
-    {
-      id: 1,
-      name: "Rent",
-      dueIn: "3 days",
-      amount: 1200.00,
-      category: "Housing",
-    },
-    {
-      id: 2,
-      name: "Electricity",
-      dueIn: "5 days",
-      amount: 87.50,
-      category: "Utilities",
-    },
-    {
-      id: 3,
-      name: "Internet",
-      dueIn: "8 days",
-      amount: 59.99,
-      category: "Internet",
-    },
-    {
-      id: 4,
-      name: "Car Insurance",
-      dueIn: "12 days",
-      amount: 95.75,
-      category: "Transportation",
+    if (isBefore(dueDateObj, today)) {
+      return { label: "Overdue", variant: "destructive", className: "bg-red-100 text-red-800 border-red-200" };
     }
-  ];
-
+    
+    if (isBefore(dueDateObj, addDays(today, 3))) {
+      return { label: "Due Soon", variant: "warning", className: "bg-amber-100 text-amber-800 border-amber-200" };
+    }
+    
+    return { label: "Upcoming", variant: "outline", className: "bg-blue-50 text-blue-800 border-blue-200" };
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!sortedBills || sortedBills.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Upcoming Bills</CardTitle>
+          <CardDescription>
+            Track your bills and due dates
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-gray-500 mb-4">No pending bills found</p>
+            <a 
+              href="/bills" 
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            >
+              Manage Bills
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-semibold">
-            Upcoming Bills
-          </CardTitle>
-          <Link href="/bills">
-            <a className="text-primary text-sm hover:underline flex items-center">
-              <span>Manage Bills</span>
-              <ArrowUpRight className="ml-1 h-4 w-4" />
-            </a>
-          </Link>
-        </div>
+      <CardHeader>
+        <CardTitle>Upcoming Bills</CardTitle>
+        <CardDescription>
+          Bills due in the coming days
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="h-64 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {upcomingBills.length > 0 ? (
-              upcomingBills.map((bill) => {
-                const daysRemaining = getDaysRemaining(bill.dueDate);
-                return (
-                  <div 
-                    key={bill.id} 
-                    className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-center">
-                      <div className={`${getBgColor(bill.category)} p-2 rounded-lg mr-3`}>
-                        {getBillIcon(bill.category)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{bill.name}</p>
-                        <p className="text-xs text-gray-500">
-                          Due in {daysRemaining} days
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">
-                        {formatCurrency(bill.amount)}
-                      </p>
-                      <Button 
-                        variant="link" 
-                        className="mt-1 h-auto p-0 text-xs text-primary font-medium"
-                      >
-                        Pay now
-                      </Button>
-                    </div>
+        <div className="space-y-4">
+          {sortedBills.map(bill => {
+            const status = getBillStatus(bill.dueDate);
+            const dueDate = new Date(bill.dueDate);
+            
+            return (
+              <div key={bill.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-gray-100 rounded-full p-2">
+                    <Calendar className="h-5 w-5 text-primary" />
                   </div>
-                );
-              })
-            ) : (
-              demoBills.map((bill) => (
-                <div 
-                  key={bill.id} 
-                  className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-center">
-                    <div className={`${getBgColor(bill.category)} p-2 rounded-lg mr-3`}>
-                      {getBillIcon(bill.category)}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{bill.name}</p>
-                      <p className="text-xs text-gray-500">Due in {bill.dueIn}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">
-                      {formatCurrency(bill.amount)}
+                  <div>
+                    <h3 className="font-medium">{bill.name}</h3>
+                    <p className="text-sm text-gray-500">
+                      {format(dueDate, "MMMM d, yyyy")}
                     </p>
-                    <Button 
-                      variant="link" 
-                      className="mt-1 h-auto p-0 text-xs text-primary font-medium"
-                    >
-                      Pay now
-                    </Button>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        )}
+                <div className="flex items-center space-x-3">
+                  <p className="font-semibold">{formatCurrency(bill.amount)}</p>
+                  <Badge className={status.className}>
+                    {status.label}
+                  </Badge>
+                </div>
+              </div>
+            );
+          })}
+          
+          {sortedBills.length > 0 && (
+            <div className="pt-3 text-center">
+              <a 
+                href="/bills" 
+                className="text-primary hover:text-primary/90 text-sm font-medium inline-flex items-center"
+              >
+                View All Bills <Check className="ml-1 h-4 w-4" />
+              </a>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
