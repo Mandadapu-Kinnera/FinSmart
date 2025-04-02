@@ -30,7 +30,8 @@ export const transactions = pgTable("transactions", {
   categoryId: integer("category_id"),
   date: timestamp("date").defaultNow(),
   isExpense: boolean("is_expense").default(true),
-  merchant: text("merchant")
+  merchant: text("merchant"),
+  type: text("type").default("expense").notNull() // income or expense
 });
 
 // Budget table

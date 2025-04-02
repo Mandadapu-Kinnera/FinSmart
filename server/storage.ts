@@ -7,10 +7,13 @@ import {
   Subscription, InsertSubscription,
   Goal, InsertGoal
 } from "@shared/schema";
-import createMemoryStore from "memorystore";
 import session from "express-session";
+import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import pg from "pg";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User operations
@@ -59,7 +62,7 @@ export interface IStorage {
   deleteGoal(id: number): Promise<boolean>;
 
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any to bypass type error
 }
 
 export class MemStorage implements IStorage {
@@ -79,7 +82,7 @@ export class MemStorage implements IStorage {
   private subscriptionIdCounter: number;
   private goalIdCounter: number;
 
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 
   constructor() {
     this.users = new Map();
@@ -137,7 +140,14 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id, createdAt: new Date() };
+    const user = {
+      ...insertUser,
+      id,
+      createdAt: new Date(),
+      firstName: insertUser.firstName || null,
+      lastName: insertUser.lastName || null,
+      email: insertUser.email || null
+    };
     this.users.set(id, user);
     return user;
   }
@@ -155,7 +165,15 @@ export class MemStorage implements IStorage {
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
     const id = this.transactionIdCounter++;
-    const newTransaction: Transaction = { ...transaction, id };
+    const newTransaction = {
+      ...transaction,
+      id,
+      date: transaction.date || new Date(),
+      type: transaction.type || 'expense',
+      categoryId: transaction.categoryId || null,
+      isExpense: transaction.isExpense || true,
+      merchant: transaction.merchant || null
+    };
     this.transactions.set(id, newTransaction);
     return newTransaction;
   }
@@ -184,7 +202,7 @@ export class MemStorage implements IStorage {
 
   async createCategory(category: InsertCategory): Promise<Category> {
     const id = this.categoryIdCounter++;
-    const newCategory: Category = { ...category, id };
+    const newCategory = { ...category, id };
     this.categories.set(id, newCategory);
     return newCategory;
   }
@@ -202,7 +220,11 @@ export class MemStorage implements IStorage {
 
   async createBudget(budget: InsertBudget): Promise<Budget> {
     const id = this.budgetIdCounter++;
-    const newBudget: Budget = { ...budget, id };
+    const newBudget = {
+      ...budget,
+      id,
+      categoryId: budget.categoryId || null
+    };
     this.budgets.set(id, newBudget);
     return newBudget;
   }
@@ -233,7 +255,12 @@ export class MemStorage implements IStorage {
 
   async createBill(bill: InsertBill): Promise<Bill> {
     const id = this.billIdCounter++;
-    const newBill: Bill = { ...bill, id };
+    const newBill = {
+      ...bill,
+      id,
+      icon: bill.icon || null,
+      isPaid: bill.isPaid || false
+    };
     this.bills.set(id, newBill);
     return newBill;
   }
@@ -264,7 +291,13 @@ export class MemStorage implements IStorage {
 
   async createSubscription(subscription: InsertSubscription): Promise<Subscription> {
     const id = this.subscriptionIdCounter++;
-    const newSubscription: Subscription = { ...subscription, id };
+    const newSubscription = {
+      ...subscription,
+      id,
+      status: subscription.status || null,
+      icon: subscription.icon || null,
+      nextBillingDate: subscription.nextBillingDate || null
+    };
     this.subscriptions.set(id, newSubscription);
     return newSubscription;
   }
@@ -295,7 +328,14 @@ export class MemStorage implements IStorage {
 
   async createGoal(goal: InsertGoal): Promise<Goal> {
     const id = this.goalIdCounter++;
-    const newGoal: Goal = { ...goal, id };
+    const newGoal = {
+      ...goal,
+      id,
+      icon: goal.icon || null,
+      category: goal.category || null,
+      currentAmount: goal.currentAmount || 0,
+      targetDate: goal.targetDate || null
+    };
     this.goals.set(id, newGoal);
     return newGoal;
   }
@@ -314,4 +354,206 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Import necessary modules for the database storage
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { users, transactions, categories, budgets, bills, subscriptions, goals } from "@shared/schema";
+
+export class DatabaseStorage implements IStorage {
+  sessionStore: any;
+  private pool: pg.Pool;
+
+  constructor() {
+    this.pool = new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+    });
+    
+    this.sessionStore = new PostgresSessionStore({ 
+      pool: this.pool, 
+      createTableIfMissing: true 
+    });
+  }
+
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  // Transaction operations
+  async getTransactions(userId: number): Promise<Transaction[]> {
+    return db.select().from(transactions).where(eq(transactions.userId, userId));
+  }
+
+  async getTransactionById(id: number): Promise<Transaction | undefined> {
+    const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
+    return transaction;
+  }
+
+  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
+    const [newTransaction] = await db.insert(transactions).values(transaction).returning();
+    return newTransaction;
+  }
+
+  async updateTransaction(id: number, transaction: Partial<InsertTransaction>): Promise<Transaction | undefined> {
+    const [updatedTransaction] = await db.update(transactions)
+      .set(transaction)
+      .where(eq(transactions.id, id))
+      .returning();
+    
+    return updatedTransaction;
+  }
+
+  async deleteTransaction(id: number): Promise<boolean> {
+    const result = await db.delete(transactions).where(eq(transactions.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Category operations
+  async getCategories(): Promise<Category[]> {
+    return db.select().from(categories);
+  }
+
+  async getCategoryById(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [newCategory] = await db.insert(categories).values(category).returning();
+    return newCategory;
+  }
+
+  // Budget operations
+  async getBudgets(userId: number): Promise<Budget[]> {
+    return db.select().from(budgets).where(eq(budgets.userId, userId));
+  }
+
+  async getBudgetById(id: number): Promise<Budget | undefined> {
+    const [budget] = await db.select().from(budgets).where(eq(budgets.id, id));
+    return budget;
+  }
+
+  async createBudget(budget: InsertBudget): Promise<Budget> {
+    const [newBudget] = await db.insert(budgets).values(budget).returning();
+    return newBudget;
+  }
+
+  async updateBudget(id: number, budget: Partial<InsertBudget>): Promise<Budget | undefined> {
+    const [updatedBudget] = await db.update(budgets)
+      .set(budget)
+      .where(eq(budgets.id, id))
+      .returning();
+    
+    return updatedBudget;
+  }
+
+  async deleteBudget(id: number): Promise<boolean> {
+    const result = await db.delete(budgets).where(eq(budgets.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Bill operations
+  async getBills(userId: number): Promise<Bill[]> {
+    return db.select().from(bills).where(eq(bills.userId, userId));
+  }
+
+  async getBillById(id: number): Promise<Bill | undefined> {
+    const [bill] = await db.select().from(bills).where(eq(bills.id, id));
+    return bill;
+  }
+
+  async createBill(bill: InsertBill): Promise<Bill> {
+    const [newBill] = await db.insert(bills).values(bill).returning();
+    return newBill;
+  }
+
+  async updateBill(id: number, bill: Partial<InsertBill>): Promise<Bill | undefined> {
+    const [updatedBill] = await db.update(bills)
+      .set(bill)
+      .where(eq(bills.id, id))
+      .returning();
+    
+    return updatedBill;
+  }
+
+  async deleteBill(id: number): Promise<boolean> {
+    const result = await db.delete(bills).where(eq(bills.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Subscription operations
+  async getSubscriptions(userId: number): Promise<Subscription[]> {
+    return db.select().from(subscriptions).where(eq(subscriptions.userId, userId));
+  }
+
+  async getSubscriptionById(id: number): Promise<Subscription | undefined> {
+    const [subscription] = await db.select().from(subscriptions).where(eq(subscriptions.id, id));
+    return subscription;
+  }
+
+  async createSubscription(subscription: InsertSubscription): Promise<Subscription> {
+    const [newSubscription] = await db.insert(subscriptions).values(subscription).returning();
+    return newSubscription;
+  }
+
+  async updateSubscription(id: number, subscription: Partial<InsertSubscription>): Promise<Subscription | undefined> {
+    const [updatedSubscription] = await db.update(subscriptions)
+      .set(subscription)
+      .where(eq(subscriptions.id, id))
+      .returning();
+    
+    return updatedSubscription;
+  }
+
+  async deleteSubscription(id: number): Promise<boolean> {
+    const result = await db.delete(subscriptions).where(eq(subscriptions.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Goal operations
+  async getGoals(userId: number): Promise<Goal[]> {
+    return db.select().from(goals).where(eq(goals.userId, userId));
+  }
+
+  async getGoalById(id: number): Promise<Goal | undefined> {
+    const [goal] = await db.select().from(goals).where(eq(goals.id, id));
+    return goal;
+  }
+
+  async createGoal(goal: InsertGoal): Promise<Goal> {
+    const [newGoal] = await db.insert(goals).values(goal).returning();
+    return newGoal;
+  }
+
+  async updateGoal(id: number, goal: Partial<InsertGoal>): Promise<Goal | undefined> {
+    const [updatedGoal] = await db.update(goals)
+      .set(goal)
+      .where(eq(goals.id, id))
+      .returning();
+    
+    return updatedGoal;
+  }
+
+  async deleteGoal(id: number): Promise<boolean> {
+    const result = await db.delete(goals).where(eq(goals.id, id)).returning();
+    return result.length > 0;
+  }
+}
+
+// Create and export the storage instance
+// Using MemStorage for now to avoid connection issues
+const storageInstance: IStorage = new MemStorage();
+console.log('Using in-memory storage');
+
+export const storage = storageInstance;

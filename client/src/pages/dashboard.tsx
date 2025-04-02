@@ -8,6 +8,7 @@ import RecentTransactions from "@/components/dashboard/recent-transactions";
 import AiRecommendations from "@/components/dashboard/ai-recommendations";
 import UpcomingBills from "@/components/dashboard/upcoming-bills";
 import SubscriptionOverview from "@/components/dashboard/subscription-overview";
+import IncomeExpenseGraph from "@/components/dashboard/income-expense-graph";
 import { useAuth } from "@/hooks/use-auth";
 import { Bell, Menu, ChartLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -102,6 +103,8 @@ export default function Dashboard() {
                 <CategoryBreakdown />
               </div>
             </div>
+            
+            <IncomeExpenseGraph />
             
             <RecentTransactions />
             
