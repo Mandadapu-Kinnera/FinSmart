@@ -711,11 +711,7 @@ export default function Settings() {
                         </p>
                       </CardContent>
                       <CardFooter>
-                        <Button 
-                          variant="outline" 
-                          className="w-full"
-                          onClick={() => window.location.href = "/help?tab=faq"}
-                        >
+                        <Button variant="outline" className="w-full">
                           View FAQs
                         </Button>
                       </CardFooter>
@@ -731,11 +727,7 @@ export default function Settings() {
                         </p>
                       </CardContent>
                       <CardFooter>
-                        <Button 
-                          variant="outline" 
-                          className="w-full"
-                          onClick={() => window.location.href = "/help?tab=chatbot"}
-                        >
+                        <Button variant="outline" className="w-full">
                           Contact Us
                         </Button>
                       </CardFooter>

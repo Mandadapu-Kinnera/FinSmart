@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { 
   Home, 
   BarChart3, 
@@ -32,24 +33,17 @@ interface NavItemProps {
 function NavItem({ href, icon, label, active, onClick }: NavItemProps) {
   return (
     <li>
-      <div
-        onClick={(e) => {
-          if (onClick) onClick();
-          // Handle the navigation programmatically to avoid nesting <a> tags
-          window.location.href = href;
-        }}
-        className={cn(
-          "flex items-center px-3 py-2 rounded-lg cursor-pointer",
-          active 
-            ? "text-primary bg-blue-50 font-medium" 
-            : "text-gray-700 hover:bg-blue-50 hover:text-primary"
-        )}
-      >
+      <Link href={href} className={cn(
+        "flex items-center px-3 py-2 rounded-lg",
+        active 
+          ? "text-primary bg-blue-50 dark:bg-gray-800 font-medium" 
+          : "text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-primary dark:hover:text-primary"
+      )}>
         {React.cloneElement(icon as React.ReactElement, { 
           className: "mr-3 h-5 w-5" 
         })}
         <span>{label}</span>
-      </div>
+      </Link>
     </li>
   );
 }
@@ -89,16 +83,19 @@ export function Sidebar({ className }: SidebarProps) {
     : user?.username;
 
   return (
-    <aside className={cn("w-64 bg-white border-r border-gray-200 pt-6 pb-8 flex flex-col h-full", className)}>
-      <div className="px-6 mb-6 flex items-center">
-        <ChartLine className="h-6 w-6 text-primary mr-2" />
-        <h1 className="text-xl font-bold text-gray-900">FinSmart</h1>
+    <aside className={cn("w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 pt-6 pb-8 flex flex-col h-full", className)}>
+      <div className="px-6 mb-6 flex items-center justify-between">
+        <div className="flex items-center">
+          <ChartLine className="h-6 w-6 text-primary mr-2" />
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">FinSmart</h1>
+        </div>
+        <ThemeToggle />
       </div>
       
       <div className="flex-1 overflow-y-auto px-6">
         {navItems.map((group, index) => (
           <div key={index} className={index > 0 ? "mt-8" : ""}>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{group.group}</h2>
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{group.group}</h2>
             <ul className="mt-3 space-y-1">
               {group.items.map((item, idx) => (
                 <NavItem
@@ -114,20 +111,20 @@ export function Sidebar({ className }: SidebarProps) {
         ))}
       </div>
       
-      <div className="px-6 mt-auto border-t border-gray-200 pt-4">
+      <div className="px-6 mt-auto border-t border-gray-200 dark:border-gray-800 pt-4">
         <div className="flex items-center mb-4 p-2">
           <div className="h-8 w-8 bg-primary text-white rounded-full flex items-center justify-center mr-3">
             <span>{userInitials}</span>
           </div>
           <div>
-            <p className="font-medium text-gray-900">{userDisplayName}</p>
-            <p className="text-xs text-gray-500">{user?.email}</p>
+            <p className="font-medium text-gray-900 dark:text-white">{userDisplayName}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
           </div>
         </div>
         
         <Button 
           variant="outline" 
-          className="w-full justify-start text-gray-700 hover:text-red-500 hover:bg-red-50"
+          className="w-full justify-start text-gray-700 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
           onClick={handleLogout}
         >
           <LogOut className="mr-2 h-4 w-4" />

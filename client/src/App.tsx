@@ -13,6 +13,7 @@ import Subscriptions from "@/pages/subscriptions";
 import Settings from "@/pages/settings";
 import Help from "@/pages/help";
 import { AuthProvider } from "@/hooks/use-auth";
+import { ThemeProvider } from "@/hooks/use-theme";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
@@ -35,10 +36,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router />
-        <Toaster />
-      </AuthProvider>
+      <ThemeProvider defaultTheme="system">
+        <AuthProvider>
+          <Router />
+          <Toaster />
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
