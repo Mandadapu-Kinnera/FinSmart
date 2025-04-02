@@ -170,12 +170,22 @@ export default function Transactions() {
 
   // Form submission handlers
   const onAddSubmit = (data: TransactionFormValues) => {
-    createMutation.mutate(data);
+    // Format the date string to a proper Date object
+    const formattedData = {
+      ...data,
+      date: new Date(data.date).toISOString()
+    };
+    createMutation.mutate(formattedData);
   };
 
   const onEditSubmit = (data: TransactionFormValues) => {
     if (currentTransaction) {
-      updateMutation.mutate({ id: currentTransaction.id, data });
+      // Format the date string to a proper Date object
+      const formattedData = {
+        ...data,
+        date: new Date(data.date).toISOString()
+      };
+      updateMutation.mutate({ id: currentTransaction.id, data: formattedData });
     }
   };
 
