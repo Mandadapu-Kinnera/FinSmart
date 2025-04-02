@@ -11,6 +11,7 @@ import Goals from "@/pages/goals";
 import Bills from "@/pages/bills";
 import Subscriptions from "@/pages/subscriptions";
 import Settings from "@/pages/settings";
+import Help from "@/pages/help";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
@@ -25,6 +26,7 @@ function Router() {
       <ProtectedRoute path="/bills" component={Bills} />
       <ProtectedRoute path="/subscriptions" component={Subscriptions} />
       <ProtectedRoute path="/settings" component={Settings} />
+      <ProtectedRoute path="/help" component={Help} />
       <Route component={NotFound} />
     </Switch>
   );

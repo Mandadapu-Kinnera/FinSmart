@@ -32,22 +32,24 @@ interface NavItemProps {
 function NavItem({ href, icon, label, active, onClick }: NavItemProps) {
   return (
     <li>
-      <Link href={href}>
-        <a
-          onClick={onClick}
-          className={cn(
-            "flex items-center px-3 py-2 rounded-lg",
-            active 
-              ? "text-primary bg-blue-50 font-medium" 
-              : "text-gray-700 hover:bg-blue-50 hover:text-primary"
-          )}
-        >
-          {React.cloneElement(icon as React.ReactElement, { 
-            className: "mr-3 h-5 w-5" 
-          })}
-          <span>{label}</span>
-        </a>
-      </Link>
+      <div
+        onClick={(e) => {
+          if (onClick) onClick();
+          // Handle the navigation programmatically to avoid nesting <a> tags
+          window.location.href = href;
+        }}
+        className={cn(
+          "flex items-center px-3 py-2 rounded-lg cursor-pointer",
+          active 
+            ? "text-primary bg-blue-50 font-medium" 
+            : "text-gray-700 hover:bg-blue-50 hover:text-primary"
+        )}
+      >
+        {React.cloneElement(icon as React.ReactElement, { 
+          className: "mr-3 h-5 w-5" 
+        })}
+        <span>{label}</span>
+      </div>
     </li>
   );
 }
@@ -65,7 +67,7 @@ const navItems = [
   ]},
   { group: "Account", items: [
     { href: "/settings", icon: <Settings />, label: "Settings" },
-    { href: "#help", icon: <HelpCircle />, label: "Help & Support" },
+    { href: "/help", icon: <HelpCircle />, label: "Help & Support" },
   ]},
 ];
 
