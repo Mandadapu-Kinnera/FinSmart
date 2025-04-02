@@ -19,6 +19,7 @@ import {
 import { Transaction } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { formatCurrency } from '@/lib/currency';
 
 // Colors for the charts
 const COLORS = {
@@ -394,15 +395,6 @@ function getCategoryBreakdown(transactions: Transaction[]) {
 function calculatePercentageChange(previous: number, current: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
   return ((current - previous) / previous) * 100;
-}
-
-// Helper function to format currency
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2
-  }).format(amount);
 }
 
 // Helper function to format dates

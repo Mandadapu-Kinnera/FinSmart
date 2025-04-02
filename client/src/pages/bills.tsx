@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Bill, insertBillSchema } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { formatCurrency } from '@/lib/currency';
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -345,14 +346,7 @@ export default function Bills() {
     return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
   });
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
+  // Use the imported currency formatter
 
   return (
     <div className="min-h-screen bg-gray-50">

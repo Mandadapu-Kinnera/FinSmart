@@ -11,6 +11,10 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import connectPg from "connect-pg-simple";
 import pg from "pg";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { users, transactions, categories, budgets, bills, subscriptions, goals } from "@shared/schema";
+import { pool } from "./db";
 
 const MemoryStore = createMemoryStore(session);
 const PostgresSessionStore = connectPg(session);
@@ -81,9 +85,9 @@ export class MemStorage implements IStorage {
   private billIdCounter: number;
   private subscriptionIdCounter: number;
   private goalIdCounter: number;
-
+  
   sessionStore: any;
-
+  
   constructor() {
     this.users = new Map();
     this.transactions = new Map();
@@ -100,278 +104,303 @@ export class MemStorage implements IStorage {
     this.billIdCounter = 1;
     this.subscriptionIdCounter = 1;
     this.goalIdCounter = 1;
-
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // 24h
-    });
-
+    
     // Initialize default categories
     this.initDefaultCategories();
   }
-
+  
   private initDefaultCategories() {
-    const defaultCategories: InsertCategory[] = [
-      { name: 'Housing', color: '#3B82F6', icon: 'home' },
-      { name: 'Food & Dining', color: '#10B981', icon: 'utensils' },
-      { name: 'Transportation', color: '#F59E0B', icon: 'car' },
-      { name: 'Entertainment', color: '#8B5CF6', icon: 'film' },
-      { name: 'Utilities', color: '#EC4899', icon: 'bolt' },
-      { name: 'Shopping', color: '#6366F1', icon: 'shopping-cart' },
-      { name: 'Healthcare', color: '#EF4444', icon: 'medkit' },
-      { name: 'Personal Care', color: '#14B8A6', icon: 'spa' },
-      { name: 'Education', color: '#F97316', icon: 'graduation-cap' },
-      { name: 'Subscriptions', color: '#A855F7', icon: 'calendar-alt' },
-      { name: 'Income', color: '#22C55E', icon: 'hand-holding-dollar' }
+    const defaultCategories = [
+      { name: "Food & Dining", color: "#f87171", icon: "utensils" },
+      { name: "Transportation", color: "#60a5fa", icon: "car" },
+      { name: "Housing", color: "#4ade80", icon: "home" },
+      { name: "Entertainment", color: "#a78bfa", icon: "film" },
+      { name: "Shopping", color: "#fbbf24", icon: "shopping-bag" },
+      { name: "Utilities", color: "#a3e635", icon: "bolt" },
+      { name: "Health", color: "#fb923c", icon: "heart-pulse" },
+      { name: "Education", color: "#38bdf8", icon: "book" },
+      { name: "Salary", color: "#2dd4bf", icon: "wallet" },
+      { name: "Investments", color: "#e879f9", icon: "trending-up" }
     ];
-
-    defaultCategories.forEach(category => this.createCategory(category));
+    
+    defaultCategories.forEach(cat => {
+      const category: Category = {
+        id: this.categoryIdCounter++,
+        name: cat.name,
+        color: cat.color,
+        icon: cat.icon
+      };
+      this.categories.set(category.id, category);
+    });
   }
-
-  // User methods
+  
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
-
+  
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
+    return Array.from(this.users.values()).find(u => u.username === username);
   }
-
+  
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user = {
-      ...insertUser,
-      id,
-      createdAt: new Date(),
+    const user: User = {
+      id: this.userIdCounter++,
+      username: insertUser.username,
+      password: insertUser.password,
       firstName: insertUser.firstName || null,
       lastName: insertUser.lastName || null,
-      email: insertUser.email || null
+      email: insertUser.email || null,
+      createdAt: new Date()
     };
-    this.users.set(id, user);
+    
+    this.users.set(user.id, user);
     return user;
   }
-
-  // Transaction methods
+  
   async getTransactions(userId: number): Promise<Transaction[]> {
-    return Array.from(this.transactions.values()).filter(
-      transaction => transaction.userId === userId
-    );
+    return Array.from(this.transactions.values()).filter(t => t.userId === userId);
   }
-
+  
   async getTransactionById(id: number): Promise<Transaction | undefined> {
     return this.transactions.get(id);
   }
-
+  
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    const id = this.transactionIdCounter++;
-    const newTransaction = {
-      ...transaction,
-      id,
-      date: transaction.date || new Date(),
+    const newTransaction: Transaction = {
+      id: this.transactionIdCounter++,
+      userId: transaction.userId,
+      amount: transaction.amount,
+      description: transaction.description,
       type: transaction.type || 'expense',
+      date: transaction.date || new Date(),
       categoryId: transaction.categoryId || null,
-      isExpense: transaction.isExpense || true,
+      isExpense: transaction.isExpense || null,
       merchant: transaction.merchant || null
     };
-    this.transactions.set(id, newTransaction);
+    
+    this.transactions.set(newTransaction.id, newTransaction);
     return newTransaction;
   }
-
+  
   async updateTransaction(id: number, transaction: Partial<InsertTransaction>): Promise<Transaction | undefined> {
     const existingTransaction = this.transactions.get(id);
-    if (!existingTransaction) return undefined;
-
-    const updatedTransaction = { ...existingTransaction, ...transaction };
+    
+    if (!existingTransaction) {
+      return undefined;
+    }
+    
+    const updatedTransaction: Transaction = {
+      ...existingTransaction,
+      ...transaction
+    };
+    
     this.transactions.set(id, updatedTransaction);
     return updatedTransaction;
   }
-
+  
   async deleteTransaction(id: number): Promise<boolean> {
     return this.transactions.delete(id);
   }
-
-  // Category methods
+  
   async getCategories(): Promise<Category[]> {
     return Array.from(this.categories.values());
   }
-
+  
   async getCategoryById(id: number): Promise<Category | undefined> {
     return this.categories.get(id);
   }
-
+  
   async createCategory(category: InsertCategory): Promise<Category> {
-    const id = this.categoryIdCounter++;
-    const newCategory = { ...category, id };
-    this.categories.set(id, newCategory);
+    const newCategory: Category = {
+      id: this.categoryIdCounter++,
+      ...category
+    };
+    
+    this.categories.set(newCategory.id, newCategory);
     return newCategory;
   }
-
-  // Budget methods
+  
   async getBudgets(userId: number): Promise<Budget[]> {
-    return Array.from(this.budgets.values()).filter(
-      budget => budget.userId === userId
-    );
+    return Array.from(this.budgets.values()).filter(b => b.userId === userId);
   }
-
+  
   async getBudgetById(id: number): Promise<Budget | undefined> {
     return this.budgets.get(id);
   }
-
+  
   async createBudget(budget: InsertBudget): Promise<Budget> {
-    const id = this.budgetIdCounter++;
-    const newBudget = {
-      ...budget,
-      id,
+    const newBudget: Budget = {
+      id: this.budgetIdCounter++,
+      userId: budget.userId,
+      name: budget.name,
+      amount: budget.amount,
+      period: budget.period,
       categoryId: budget.categoryId || null
     };
-    this.budgets.set(id, newBudget);
+    
+    this.budgets.set(newBudget.id, newBudget);
     return newBudget;
   }
-
+  
   async updateBudget(id: number, budget: Partial<InsertBudget>): Promise<Budget | undefined> {
     const existingBudget = this.budgets.get(id);
-    if (!existingBudget) return undefined;
-
-    const updatedBudget = { ...existingBudget, ...budget };
+    
+    if (!existingBudget) {
+      return undefined;
+    }
+    
+    const updatedBudget: Budget = {
+      ...existingBudget,
+      ...budget
+    };
+    
     this.budgets.set(id, updatedBudget);
     return updatedBudget;
   }
-
+  
   async deleteBudget(id: number): Promise<boolean> {
     return this.budgets.delete(id);
   }
-
-  // Bill methods
+  
   async getBills(userId: number): Promise<Bill[]> {
-    return Array.from(this.bills.values()).filter(
-      bill => bill.userId === userId
-    );
+    return Array.from(this.bills.values()).filter(b => b.userId === userId);
   }
-
+  
   async getBillById(id: number): Promise<Bill | undefined> {
     return this.bills.get(id);
   }
-
+  
   async createBill(bill: InsertBill): Promise<Bill> {
-    const id = this.billIdCounter++;
-    const newBill = {
-      ...bill,
-      id,
-      icon: bill.icon || null,
-      isPaid: bill.isPaid || false
+    const newBill: Bill = {
+      id: this.billIdCounter++,
+      userId: bill.userId,
+      name: bill.name,
+      amount: bill.amount,
+      dueDate: bill.dueDate,
+      category: bill.category,
+      isPaid: bill.isPaid || null,
+      icon: bill.icon || null
     };
-    this.bills.set(id, newBill);
+    
+    this.bills.set(newBill.id, newBill);
     return newBill;
   }
-
+  
   async updateBill(id: number, bill: Partial<InsertBill>): Promise<Bill | undefined> {
     const existingBill = this.bills.get(id);
-    if (!existingBill) return undefined;
-
-    const updatedBill = { ...existingBill, ...bill };
+    
+    if (!existingBill) {
+      return undefined;
+    }
+    
+    const updatedBill: Bill = {
+      ...existingBill,
+      ...bill
+    };
+    
     this.bills.set(id, updatedBill);
     return updatedBill;
   }
-
+  
   async deleteBill(id: number): Promise<boolean> {
     return this.bills.delete(id);
   }
-
-  // Subscription methods
+  
   async getSubscriptions(userId: number): Promise<Subscription[]> {
-    return Array.from(this.subscriptions.values()).filter(
-      subscription => subscription.userId === userId
-    );
+    return Array.from(this.subscriptions.values()).filter(s => s.userId === userId);
   }
-
+  
   async getSubscriptionById(id: number): Promise<Subscription | undefined> {
     return this.subscriptions.get(id);
   }
-
+  
   async createSubscription(subscription: InsertSubscription): Promise<Subscription> {
-    const id = this.subscriptionIdCounter++;
-    const newSubscription = {
-      ...subscription,
-      id,
-      status: subscription.status || null,
+    const newSubscription: Subscription = {
+      id: this.subscriptionIdCounter++,
+      userId: subscription.userId,
+      name: subscription.name,
+      amount: subscription.amount,
+      category: subscription.category,
+      billingCycle: subscription.billingCycle,
       icon: subscription.icon || null,
+      status: subscription.status || null,
       nextBillingDate: subscription.nextBillingDate || null
     };
-    this.subscriptions.set(id, newSubscription);
+    
+    this.subscriptions.set(newSubscription.id, newSubscription);
     return newSubscription;
   }
-
+  
   async updateSubscription(id: number, subscription: Partial<InsertSubscription>): Promise<Subscription | undefined> {
     const existingSubscription = this.subscriptions.get(id);
-    if (!existingSubscription) return undefined;
-
-    const updatedSubscription = { ...existingSubscription, ...subscription };
+    
+    if (!existingSubscription) {
+      return undefined;
+    }
+    
+    const updatedSubscription: Subscription = {
+      ...existingSubscription,
+      ...subscription
+    };
+    
     this.subscriptions.set(id, updatedSubscription);
     return updatedSubscription;
   }
-
+  
   async deleteSubscription(id: number): Promise<boolean> {
     return this.subscriptions.delete(id);
   }
-
-  // Goal methods
+  
   async getGoals(userId: number): Promise<Goal[]> {
-    return Array.from(this.goals.values()).filter(
-      goal => goal.userId === userId
-    );
+    return Array.from(this.goals.values()).filter(g => g.userId === userId);
   }
-
+  
   async getGoalById(id: number): Promise<Goal | undefined> {
     return this.goals.get(id);
   }
-
+  
   async createGoal(goal: InsertGoal): Promise<Goal> {
-    const id = this.goalIdCounter++;
-    const newGoal = {
-      ...goal,
-      id,
+    const newGoal: Goal = {
+      id: this.goalIdCounter++,
+      userId: goal.userId,
+      name: goal.name,
+      targetAmount: goal.targetAmount,
       icon: goal.icon || null,
       category: goal.category || null,
-      currentAmount: goal.currentAmount || 0,
+      currentAmount: goal.currentAmount || null,
       targetDate: goal.targetDate || null
     };
-    this.goals.set(id, newGoal);
+    
+    this.goals.set(newGoal.id, newGoal);
     return newGoal;
   }
-
+  
   async updateGoal(id: number, goal: Partial<InsertGoal>): Promise<Goal | undefined> {
     const existingGoal = this.goals.get(id);
-    if (!existingGoal) return undefined;
-
-    const updatedGoal = { ...existingGoal, ...goal };
+    
+    if (!existingGoal) {
+      return undefined;
+    }
+    
+    const updatedGoal: Goal = {
+      ...existingGoal,
+      ...goal
+    };
+    
     this.goals.set(id, updatedGoal);
     return updatedGoal;
   }
-
+  
   async deleteGoal(id: number): Promise<boolean> {
     return this.goals.delete(id);
   }
 }
 
-// Import necessary modules for the database storage
-import { db } from "./db";
-import { eq } from "drizzle-orm";
-import { users, transactions, categories, budgets, bills, subscriptions, goals } from "@shared/schema";
-
 export class DatabaseStorage implements IStorage {
   sessionStore: any;
-  private pool: pg.Pool;
 
   constructor() {
-    this.pool = new pg.Pool({
-      connectionString: process.env.DATABASE_URL,
-    });
-    
-    this.sessionStore = new PostgresSessionStore({ 
-      pool: this.pool, 
-      createTableIfMissing: true 
-    });
+    // The sessionStore is set below in the try/catch block
   }
 
   // User operations
@@ -551,9 +580,29 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Create and export the storage instance
-// Using MemStorage for now to avoid connection issues
-const storageInstance: IStorage = new MemStorage();
-console.log('Using in-memory storage');
+// Try to use database if possible, with fallback to in-memory storage
+let storageInstance: IStorage;
+
+try {
+  console.log("Attempting to use PostgreSQL database");
+  const dbStorage = new DatabaseStorage();
+  // Create session store
+  dbStorage.sessionStore = new PostgresSessionStore({ 
+    pool: pool, 
+    createTableIfMissing: true 
+  });
+  storageInstance = dbStorage;
+  console.log("Using PostgreSQL database storage");
+} catch (error) {
+  console.error("Failed to connect to PostgreSQL, using in-memory storage as fallback", error);
+  const memStorage = new MemStorage();
+  // Create memory session store
+  const MemoryStore = require('memorystore')(session);
+  memStorage.sessionStore = new MemoryStore({
+    checkPeriod: 86400000 // prune expired entries every 24h
+  });
+  storageInstance = memStorage;
+  console.log("Using in-memory storage");
+}
 
 export const storage = storageInstance;
