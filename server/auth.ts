@@ -39,14 +39,13 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "finsmart-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    store: storage.sessionStore,
+    resave: true,
+    saveUninitialized: true,
     cookie: {
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
       sameSite: "lax",
-      secure: false // set to true in production
+      secure: process.env.NODE_ENV === "production"
     }
   };
 
@@ -102,12 +101,18 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err: Error, user: Express.User) => {
-      if (err) return next(err);
+      if (err) {
+        console.error("Authentication error:", err);
+        return res.status(500).json({ message: "Internal server error" });
+      }
       if (!user) {
         return res.status(401).json({ message: "Invalid username or password" });
       }
       req.login(user, (loginErr) => {
-        if (loginErr) return next(loginErr);
+        if (loginErr) {
+          console.error("Login error:", loginErr);
+          return res.status(500).json({ message: "Failed to establish session" });
+        }
         return res.json(user);
       });
     })(req, res, next);
