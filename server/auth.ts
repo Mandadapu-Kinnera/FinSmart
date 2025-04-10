@@ -97,22 +97,32 @@ export function setupAuth(app: Express) {
 
       const hashedPassword = await hashPassword(req.body.password);
       console.log("Creating new user:", req.body.username);
-      const user = await storage.createUser({
-        ...req.body,
+      
+      // Create user with proper data structure
+      const userData = {
+        username: req.body.username,
         password: hashedPassword,
-      });
+        firstName: req.body.firstName || null,
+        lastName: req.body.lastName || null,
+        email: req.body.email || null,
+      };
 
-      req.login(user, (err) => {
-        if (err) {
-          console.error("Login error after registration:", err);
-          return res.status(500).json({ message: "Error during login after registration" });
-        }
-        return res.status(201).json({
-          id: user.id,
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email
+      const user = await storage.createUser(userData);
+
+      // Handle login after registration
+      return new Promise((resolve) => {
+        req.login(user, (err) => {
+          if (err) {
+            console.error("Login error after registration:", err);
+            return res.status(500).json({ message: "Error during login after registration" });
+          }
+          return res.status(201).json({
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email
+          });
         });
       });
     } catch (error) {
