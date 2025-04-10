@@ -98,16 +98,18 @@ export function setupAuth(app: Express) {
       const hashedPassword = await hashPassword(req.body.password);
       console.log("Creating new user:", req.body.username);
       
-      // Create user with proper data structure
-      const userData = {
+      const user = await storage.createUser({
         username: req.body.username,
         password: hashedPassword,
         firstName: req.body.firstName || null,
         lastName: req.body.lastName || null,
-        email: req.body.email || null,
-      };
+        email: req.body.email || null
+      });
 
-      const user = await storage.createUser(userData);
+      if (!user) {
+        console.error("Failed to create user");
+        return res.status(500).json({ message: "Failed to create user" });
+      }
 
       // Handle login after registration
       return new Promise((resolve) => {
