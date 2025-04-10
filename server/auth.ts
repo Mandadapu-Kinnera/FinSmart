@@ -81,17 +81,22 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      console.log("Registration attempt for:", req.body.username);
+      
       // Validate request body
       if (!req.body.username || !req.body.password) {
+        console.log("Registration failed: Missing credentials");
         return res.status(400).json({ message: "Username and password are required" });
       }
 
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
+        console.log("Registration failed: Username exists:", req.body.username);
         return res.status(400).json({ message: "Username already exists" });
       }
 
       const hashedPassword = await hashPassword(req.body.password);
+      console.log("Creating new user:", req.body.username);
       const user = await storage.createUser({
         ...req.body,
         password: hashedPassword,

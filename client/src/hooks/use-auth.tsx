@@ -65,9 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Registration error:", error);
       toast({
         title: "Registration failed",
-        description: error.message,
+        description: error.message || "Failed to create account. Please try again.",
         variant: "destructive",
       });
     },
