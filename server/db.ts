@@ -8,12 +8,14 @@ console.log("Initializing database connection");
 // Create connection pool with better timeout and retry settings
 const pool = new pg.Pool({
   connectionString: process.env.REPLIT_DB_URL || 'postgres://postgres:postgres@localhost:5432/postgres',
-  max: 20,
+  max: 5,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-  ssl: process.env.NODE_ENV === 'production' ? {
+  connectionTimeoutMillis: 10000,
+  ssl: {
     rejectUnauthorized: false
-  } : false
+  },
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000
 });
 
 // Add error handler to pool
