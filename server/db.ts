@@ -5,13 +5,8 @@ import * as schema from '@shared/schema';
 
 console.log("Initializing database connection");
 
-// Get database URL and modify for connection pooling
-const dbUrl = process.env.DATABASE_URL;
-const poolUrl = dbUrl?.replace('.us-east-2', '-pooler.us-east-2');
-
-// Create connection pool with better retry and timeout settings
 const pool = new pg.Pool({
-  connectionString: poolUrl,
+  connectionString: process.env.DATABASE_URL,
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
@@ -25,12 +20,21 @@ const pool = new pg.Pool({
 
 // Add error handler to pool
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle database client', err);
+  console.error('Database connection error:', err);
 });
 
 // Add connect handler
 pool.on('connect', () => {
   console.log('Successfully connected to database');
+});
+
+// Test connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection test failed:', err);
+  } else {
+    console.log('Database connection test successful');
+  }
 });
 
 // Export pool and configured drizzle instance
