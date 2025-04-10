@@ -89,7 +89,14 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Username and password are required" });
       }
 
-      const existingUser = await storage.getUserByUsername(req.body.username);
+      let existingUser;
+      try {
+        existingUser = await storage.getUserByUsername(req.body.username);
+      } catch (error) {
+        console.error("Database error during registration:", error);
+        return res.status(503).json({ message: "Database service unavailable. Please try again in a few moments." });
+      }
+
       if (existingUser) {
         console.log("Registration failed: Username exists:", req.body.username);
         return res.status(400).json({ message: "Username already exists" });
