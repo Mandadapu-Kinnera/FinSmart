@@ -134,21 +134,35 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: Error, user: Express.User) => {
-      if (err) {
-        console.error("Authentication error:", err);
-        return res.status(500).json({ message: "Internal server error" });
-      }
-      if (!user) {
-        return res.status(401).json({ message: "Invalid username or password" });
-      }
-      req.login(user, (loginErr) => {
-        if (loginErr) {
-          console.error("Login error:", loginErr);
-          return res.status(500).json({ message: "Failed to establish session" });
+    passport.authenticate("local", async (err: Error, user: Express.User) => {
+      try {
+        if (err) {
+          console.error("Authentication error:", err);
+          if (err.message.includes('ETIMEDOUT')) {
+            return res.status(503).json({ message: "Database connection timeout. Please try again." });
+          }
+          return res.status(500).json({ message: "Authentication failed. Please try again." });
         }
+        if (!user) {
+          return res.status(401).json({ message: "Invalid username or password" });
+        }
+        
+        await new Promise<void>((resolve, reject) => {
+          req.login(user, (loginErr) => {
+            if (loginErr) {
+              console.error("Login error:", loginErr);
+              reject(loginErr);
+              return;
+            }
+            resolve();
+          });
+        });
+        
         return res.json(user);
-      });
+      } catch (error) {
+        console.error("Login process error:", error);
+        return res.status(500).json({ message: "Failed to complete login process. Please try again." });
+      }
     })(req, res, next);
   });
 

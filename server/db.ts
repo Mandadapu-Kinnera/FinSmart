@@ -1,21 +1,23 @@
 
-import pg from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "@shared/schema";
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import * as schema from '@shared/schema';
 
-const pool = new pg.Pool({
-  connectionString: process.env.REPLIT_DB_URL || 'postgres://postgres:postgres@localhost:5432/postgres',
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false
+console.log("Initializing database connection");
+
+// Create connection pool with better timeout and retry settings
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+  maxUses: 7500,
 });
 
-// Test database connection
+// Add error handler to pool
 pool.on('error', (err) => {
-  console.error('Unexpected database error:', err);
+  console.error('Unexpected error on idle database client', err);
 });
 
-console.log('Attempting to use PostgreSQL database');
-
+// Export configured drizzle instance
 export const db = drizzle(pool, { schema });
-export { pool };
