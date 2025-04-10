@@ -5,17 +5,25 @@ import * as schema from '@shared/schema';
 
 console.log("Initializing database connection");
 
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is not set");
+}
+
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
-  ssl: {
+  ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
-  },
+  } : false,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
-  application_name: 'finsmart-app'
+  application_name: 'finsmart-app',
+  statement_timeout: 10000,
+  query_timeout: 10000,
+  connectionTimeoutMillis: 10000,
+  idle_in_transaction_session_timeout: 10000
 });
 
 // Add error handler to pool
