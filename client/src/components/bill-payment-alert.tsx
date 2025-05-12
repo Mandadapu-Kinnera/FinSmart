@@ -17,11 +17,6 @@ export function BillPaymentAlert({ bills }: BillPaymentAlertProps) {
     const alarmHours = 9; // Hour when alerts will be shown (9 AM)
     const nowHour = new Date().getHours();
     
-    // Check that we're in the alert window (between 9-10 AM)
-    // For demo purposes, we'll just show alerts any time
-    // const isAlertWindow = nowHour >= alarmHours && nowHour < (alarmHours + 1);
-    // if (!isAlertWindow) return;
-    
     const checkDueBills = () => {
       const today = new Date();
       
