@@ -80,7 +80,8 @@ FinSmart/
 ### 1. Clone the Repository
 
 
-git clone https://github.com/your-username/FinSmart.git
+git clone https://github.com/Mandadapu-Kinnera/FinSmart.git
+
 cd FinSmart
 
 
