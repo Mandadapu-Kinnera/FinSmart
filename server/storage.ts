@@ -580,29 +580,13 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Try to use database if possible, with fallback to in-memory storage
-let storageInstance: IStorage;
-
-try {
-  console.log("Attempting to use PostgreSQL database");
-  const dbStorage = new DatabaseStorage();
-  // Create session store
-  dbStorage.sessionStore = new PostgresSessionStore({ 
-    pool: pool, 
-    createTableIfMissing: true 
-  });
-  storageInstance = dbStorage;
-  console.log("Using PostgreSQL database storage");
-} catch (error) {
-  console.error("Failed to connect to PostgreSQL, using in-memory storage as fallback", error);
-  const memStorage = new MemStorage();
-  // Create memory session store
-  const MemoryStore = require('memorystore')(session);
-  memStorage.sessionStore = new MemoryStore({
-    checkPeriod: 86400000 // prune expired entries every 24h
-  });
-  storageInstance = memStorage;
-  console.log("Using in-memory storage");
-}
+// Using in-memory storage for reliable operation
+console.log("Using in-memory storage for optimal performance");
+const memStorage = new MemStorage();
+// Create memory session store
+memStorage.sessionStore = new MemoryStore({
+  checkPeriod: 86400000 // prune expired entries every 24h
+});
+const storageInstance = memStorage;
 
 export const storage = storageInstance;
