@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Bell, PiggyBank, Receipt } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "./badge";
+import { Button } from "./button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Notification {

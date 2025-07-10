@@ -281,7 +281,6 @@ function getSummaryData(transactions: Transaction[]) {
 // Helper function to get time series data
 function getTimeSeriesData(transactions: Transaction[], period: Period) {
   const result: { date: string; income: number; expense: number }[] = [];
-  const dateFormat = period === "year" ? "MMM" : period === "month" ? "MMM D" : "ddd";
   
   // Create a map of dates to aggregate values
   const dateMap = new Map<string, { income: number; expense: number }>();
@@ -303,18 +302,23 @@ function getTimeSeriesData(transactions: Transaction[], period: Period) {
   }
   
   while (current <= now) {
-    const dateKey = formatDate(current, dateFormat);
+    const dateKey = current.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: period === 'week' ? 'numeric' : undefined 
+    }).trim();
     dateMap.set(dateKey, { income: 0, expense: 0 });
     
     switch (period) {
       case "week":
-        current.setDate(current.getDate() + 1);
+        current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
         break;
       case "month":
-        current.setDate(current.getDate() + 3); // Show every 3 days for a month
+        current = new Date(current.getTime() + 3 * 24 * 60 * 60 * 1000);
         break;
       case "year":
-        current.setMonth(current.getMonth() + 1);
+        const nextMonth = new Date(current);
+        nextMonth.setMonth(current.getMonth() + 1);
+        current = nextMonth;
         break;
     }
   }
@@ -323,17 +327,13 @@ function getTimeSeriesData(transactions: Transaction[], period: Period) {
   transactions.forEach(transaction => {
     if (!transaction.date) return;
     
-    // Safely create a date object
-    let date: Date;
-    try {
-      date = new Date(transaction.date);
-      // Check if date is valid
-      if (isNaN(date.getTime())) return;
-    } catch (error) {
-      return; // Skip this transaction if date parsing fails
-    }
+    const date = new Date(transaction.date);
+    if (isNaN(date.getTime())) return;
     
-    const dateKey = formatDate(date, dateFormat);
+    const dateKey = date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: period === 'week' ? 'numeric' : undefined 
+    }).trim();
     
     if (dateMap.has(dateKey)) {
       const entry = dateMap.get(dateKey)!;
@@ -360,10 +360,8 @@ function getTimeSeriesData(transactions: Transaction[], period: Period) {
   return result.sort((a, b) => {
     // Custom sorting based on period
     if (period === "week") {
-      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      return days.indexOf(a.date.substring(0, 3)) - days.indexOf(b.date.substring(0, 3));
+      return 0; // Simple sort for now
     }
-    // For month and year, let's assume the data is already in chronological order
     return 0;
   });
 }
@@ -397,24 +395,6 @@ function calculatePercentageChange(previous: number, current: number): number {
   return ((current - previous) / previous) * 100;
 }
 
-// Helper function to format dates
-function formatDate(date: Date, format: string): string {
-  const options: Intl.DateTimeFormatOptions = {};
-  
-  if (format.includes("MMM")) {
-    options.month = "short";
-  }
-  
-  if (format.includes("D")) {
-    options.day = "numeric";
-  }
-  
-  if (format.includes("ddd")) {
-    options.weekday = "short";
-  }
-  
-  return new Intl.DateTimeFormat('en-US', options).format(date);
-}
 
 // Custom label renderer for pie chart
 const RADIAN = Math.PI / 180;

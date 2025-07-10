@@ -597,7 +597,6 @@ try {
   console.error("Failed to connect to PostgreSQL, using in-memory storage as fallback", error);
   const memStorage = new MemStorage();
   // Create memory session store
-  const MemoryStore = require('memorystore')(session);
   memStorage.sessionStore = new MemoryStore({
     checkPeriod: 86400000 // prune expired entries every 24h
   });
