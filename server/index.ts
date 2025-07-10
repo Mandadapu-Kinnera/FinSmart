@@ -15,6 +15,9 @@ app.use((req, res, next) => {
   res.json = function (bodyJson, ...args) {
     capturedJsonResponse = bodyJson;
     return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+});
+
 // Initialize storage and session configuration
 async function initializeApp() {
   const storage = await getStorage();
@@ -31,10 +34,10 @@ async function initializeApp() {
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
   }));
-      }
+
   registerRoutes(app);
   registerVite(app);
-    }
+
   const PORT = 5000;
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
@@ -46,6 +49,7 @@ initializeApp().catch((error) => {
   console.error("Failed to initialize application:", error);
   process.exit(1);
 });
+
 (async () => {
   const server = await registerRoutes(app);
 
