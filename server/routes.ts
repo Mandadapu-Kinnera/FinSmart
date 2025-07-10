@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
-import { storage } from "./storage";
+import { getStorage } from "./storage";
 import { insertBillSchema, insertBudgetSchema, insertGoalSchema, insertSubscriptionSchema, insertTransactionSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -11,6 +11,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Transactions routes
   app.get("/api/transactions", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const transactions = await storage.getTransactions(req.user!.id);
       res.json(transactions);
@@ -21,6 +22,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/transactions", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const parsedData = insertTransactionSchema.parse({
         ...req.body,
@@ -36,6 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/transactions/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const transaction = await storage.getTransactionById(id);
@@ -61,6 +64,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/transactions/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const transaction = await storage.getTransactionById(id);
@@ -83,6 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Categories routes
   app.get("/api/categories", async (req, res) => {
     try {
+      const storage = await getStorage();
       const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
@@ -93,6 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Budget routes
   app.get("/api/budgets", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const budgets = await storage.getBudgets(req.user!.id);
       res.json(budgets);
@@ -103,6 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/budgets", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const parsedData = insertBudgetSchema.parse({
         ...req.body,
@@ -118,6 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/budgets/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const budget = await storage.getBudgetById(id);
@@ -139,6 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/budgets/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const budget = await storage.getBudgetById(id);
@@ -161,6 +170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bills routes
   app.get("/api/bills", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const bills = await storage.getBills(req.user!.id);
       res.json(bills);
@@ -171,6 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/bills", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const parsedData = insertBillSchema.parse({
         ...req.body,
@@ -186,6 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/bills/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const bill = await storage.getBillById(id);
@@ -207,6 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/bills/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const bill = await storage.getBillById(id);
@@ -229,6 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Subscriptions routes
   app.get("/api/subscriptions", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const subscriptions = await storage.getSubscriptions(req.user!.id);
       res.json(subscriptions);
@@ -239,6 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/subscriptions", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const parsedData = insertSubscriptionSchema.parse({
         ...req.body,
@@ -254,6 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/subscriptions/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const subscription = await storage.getSubscriptionById(id);
@@ -275,6 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/subscriptions/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const subscription = await storage.getSubscriptionById(id);
@@ -297,6 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Goals routes
   app.get("/api/goals", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const goals = await storage.getGoals(req.user!.id);
       res.json(goals);
@@ -307,6 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/goals", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const parsedData = insertGoalSchema.parse({
         ...req.body,
@@ -322,6 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/goals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const goal = await storage.getGoalById(id);
@@ -343,6 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/goals/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+      const storage = await getStorage();
     try {
       const id = parseInt(req.params.id);
       const goal = await storage.getGoalById(id);

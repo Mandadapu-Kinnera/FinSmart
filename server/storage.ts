@@ -400,7 +400,8 @@ export class DatabaseStorage implements IStorage {
   sessionStore: any;
 
   constructor() {
-    // The sessionStore is set below in the try/catch block
+    // Session store will be initialized when storage is created
+    this.sessionStore = null;
   }
 
   // User operations
@@ -583,25 +584,59 @@ export class DatabaseStorage implements IStorage {
 // Try to use database if possible, with fallback to in-memory storage
 let storageInstance: IStorage;
 
-try {
-  console.log("Attempting to use PostgreSQL database");
-  const dbStorage = new DatabaseStorage();
-  // Create session store
-  dbStorage.sessionStore = new PostgresSessionStore({ 
-    pool: pool, 
-    createTableIfMissing: true 
-  });
-  storageInstance = dbStorage;
-  console.log("Using PostgreSQL database storage");
-} catch (error) {
-  console.error("Failed to connect to PostgreSQL, using in-memory storage as fallback", error);
-  const memStorage = new MemStorage();
-  // Create memory session store
-  memStorage.sessionStore = new MemoryStore({
-    checkPeriod: 86400000 // prune expired entries every 24h
-  });
-  storageInstance = memStorage;
-  console.log("Using in-memory storage");
+async function initializeStorage(): Promise<IStorage> {
+  try {
+    console.log("Attempting to use PostgreSQL database");
+    
+    // Test the database connection first
+    await pool.query('SELECT 1');
+    
+    const dbStorage = new DatabaseStorage();
+    // Create session store
+    dbStorage.sessionStore = new PostgresSessionStore({ 
+      pool: pool, 
+      createTableIfMissing: true 
+    });
+    
+    console.log("Using PostgreSQL database storage");
+    return dbStorage;
+  } catch (error) {
+    console.error("Failed to connect to PostgreSQL, using in-memory storage as fallback", error);
+    const memStorage = new MemStorage();
+    // Create memory session store
+    memStorage.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
+    console.log("Using in-memory storage");
+    return memStorage;
+  }
 }
 
+// Initialize storage with proper error handling
+let storageInstance: IStorage;
+
+// Use a self-executing async function to handle the initialization
+(async () => {
+  storageInstance = await initializeStorage();
+})().catch((error) => {
+  console.error("Critical error during storage initialization:", error);
+  // Final fallback to memory storage
+  const memStorage = new MemStorage();
+  memStorage.sessionStore = new MemoryStore({
+    checkPeriod: 86400000
+  });
+  storageInstance = memStorage;
+  console.log("Using fallback in-memory storage");
+});
+
+// Export a function that waits for storage to be initialized
+export const getStorage = async (): Promise<IStorage> => {
+  // Wait for storage to be initialized
+  while (!storageInstance) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  return storageInstance;
+};
+
+// For backward compatibility, export storage but it might be undefined initially
 export const storage = storageInstance;
