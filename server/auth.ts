@@ -128,4 +128,32 @@ export function setupAuth(app: Express) {
     const storage = await getStorage();
     res.json(req.user);
   });
+
+  // Auto-login endpoint for bypassing authentication
+  app.post("/api/auto-login", async (req, res, next) => {
+    try {
+      const storage = await getStorage();
+      
+      // Try to get existing demo user
+      let user = await storage.getUserByUsername("demo");
+      
+      // If demo user doesn't exist, create one
+      if (!user) {
+        user = await storage.createUser({
+          username: "demo",
+          password: await hashPassword("demo123"),
+          firstName: "Demo",
+          lastName: "User",
+          email: "demo@finsmart.com"
+        });
+      }
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        return res.json(user);
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 }

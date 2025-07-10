@@ -17,10 +17,8 @@ export function ProtectedRoute({
         <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      ) : user ? (
-        <Component />
       ) : (
-        <Redirect to="/auth" />
+        <Component />
       )}
     </Route>
   );

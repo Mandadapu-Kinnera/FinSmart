@@ -17,14 +17,13 @@ import { ProtectedRoute } from "@/lib/protected-route";
 function Router() {
   return (
     <Switch>
-      <Route path="/auth" component={AuthPage} />
-      <ProtectedRoute path="/" component={Dashboard} />
-      <ProtectedRoute path="/transactions" component={Transactions} />
-      <ProtectedRoute path="/budgets" component={Budgets} />
-      <ProtectedRoute path="/goals" component={Goals} />
-      <ProtectedRoute path="/bills" component={Bills} />
-      <ProtectedRoute path="/subscriptions" component={Subscriptions} />
-      <ProtectedRoute path="/settings" component={Settings} />
+      <Route path="/" component={Dashboard} />
+      <Route path="/transactions" component={Transactions} />
+      <Route path="/budgets" component={Budgets} />
+      <Route path="/goals" component={Goals} />
+      <Route path="/bills" component={Bills} />
+      <Route path="/subscriptions" component={Subscriptions} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );

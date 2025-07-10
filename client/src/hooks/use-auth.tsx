@@ -28,7 +28,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/user", { credentials: "include" });
+        if (response.status === 401) {
+          // Auto-login with default user if not authenticated
+          const loginResponse = await fetch("/api/auto-login", {
+            method: "POST",
+            credentials: "include"
+          });
+          if (loginResponse.ok) {
+            return await loginResponse.json();
+          }
+          return null;
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error("Auth error:", error);
+        return null;
+      }
+    },
   });
 
   const loginMutation = useMutation({
