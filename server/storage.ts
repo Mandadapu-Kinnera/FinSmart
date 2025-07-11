@@ -582,8 +582,6 @@ export class DatabaseStorage implements IStorage {
 }
 
 // Try to use database if possible, with fallback to in-memory storage
-let storageInstance: IStorage;
-
 async function initializeStorage(): Promise<IStorage> {
   try {
     console.log("Attempting to use PostgreSQL database");
