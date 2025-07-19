@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertBillSchema, insertBudgetSchema, insertGoalSchema, insertSubscriptionSchema, insertTransactionSchema } from "@shared/schema";
+import OpenAI from 'openai';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
@@ -373,9 +374,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
 
-      // Import OpenAI here to avoid loading it if not needed
-      const OpenAI = require('openai');
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      // Create OpenAI instance
+      const openai = new OpenAI({ 
+        apiKey: process.env.OPENAI_API_KEY 
+      });
 
       // Fraud detection keywords
       const fraudKeywords = [
