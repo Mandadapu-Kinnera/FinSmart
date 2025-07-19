@@ -374,31 +374,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
 
-      // Create OpenAI instance
-      const openai = new OpenAI({ 
-        apiKey: process.env.OPENAI_API_KEY 
-      });
-
-      // Fraud detection keywords
-      const fraudKeywords = [
-        'suspicious transaction', 'unauthorized access', 'someone accessed', 
-        'account compromised', 'strange activity', 'fraud', 'scam', 'hack',
-        'stolen', 'identity theft', 'phishing'
-      ];
-      
-      // Check for fraud concerns
-      const lowerMessage = message.toLowerCase();
-      const isFraudConcern = fraudKeywords.some(keyword => lowerMessage.includes(keyword));
-      
-      if (isFraudConcern) {
-        return res.json({
-          response: "I understand you have security concerns. For your account safety, I'm escalating this to our security team. Please contact our fraud helpline immediately at 1-800-FRAUD-HELP or email security@finsmart.com. In the meantime, consider changing your password and reviewing recent transactions.",
-          escalate: true,
-          priority: "high",
-          category: "fraud"
-        });
-      }
-
       // Financial FAQ knowledge base
       const financialContext = `
 You are FinSmart AI Assistant, a helpful financial chatbot for a personal finance management app. You help users with:
@@ -429,21 +404,104 @@ You are FinSmart AI Assistant, a helpful financial chatbot for a personal financ
 Always be helpful, professional, and security-conscious. If users seem frustrated or need complex help, suggest contacting live support.
 `;
 
-      // Build conversation context
-      const messages = [
-        { role: "system", content: financialContext },
-        ...context.slice(-10), // Last 10 messages for context
-        { role: "user", content: message }
+      // Try OpenRouter first, fallback to OpenAI
+      let aiResponse;
+      
+      if (process.env.OPENROUTER_API_KEY) {
+        // Use OpenRouter API
+        try {
+          const openrouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://finsmart.app',
+              'X-Title': 'FinSmart AI Assistant'
+            },
+            body: JSON.stringify({
+              model: 'anthropic/claude-3.5-sonnet',
+              messages: [
+                {
+                  role: 'system',
+                  content: financialContext
+                },
+                {
+                  role: 'user', 
+                  content: message
+                }
+              ],
+              max_tokens: 500,
+              temperature: 0.7
+            })
+          });
+
+          if (openrouterResponse.ok) {
+            const data = await openrouterResponse.json();
+            aiResponse = data.choices[0].message.content;
+          } else {
+            throw new Error(`OpenRouter API error: ${openrouterResponse.status}`);
+          }
+        } catch (openrouterError) {
+          console.log('OpenRouter failed, trying OpenAI...', openrouterError.message);
+          
+          // Fallback to OpenAI
+          const openai = new OpenAI({ 
+            apiKey: process.env.OPENAI_API_KEY 
+          });
+          
+          const openaiResponse = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: message }
+            ],
+            max_tokens: 500,
+            temperature: 0.7,
+          });
+          
+          aiResponse = openaiResponse.choices[0].message.content;
+        }
+      } else {
+        // Use OpenAI directly
+        const openai = new OpenAI({ 
+          apiKey: process.env.OPENAI_API_KEY 
+        });
+        
+        const openaiResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: financialContext },
+            { role: "user", content: message }
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        });
+        
+        aiResponse = openaiResponse.choices[0].message.content;
+      }
+
+      // Fraud detection keywords
+      const fraudKeywords = [
+        'suspicious transaction', 'unauthorized access', 'someone accessed', 
+        'account compromised', 'strange activity', 'fraud', 'scam', 'hack',
+        'stolen', 'identity theft', 'phishing'
       ];
+      
+      // Check for fraud concerns
+      const lowerMessage = message.toLowerCase();
+      const isFraudConcern = fraudKeywords.some(keyword => lowerMessage.includes(keyword));
+      
+      if (isFraudConcern) {
+        return res.json({
+          response: "I understand you have security concerns. For your account safety, I'm escalating this to our security team. Please contact our fraud helpline immediately at 1-800-FRAUD-HELP or email security@finsmart.com. In the meantime, consider changing your password and reviewing recent transactions.",
+          escalate: true,
+          priority: "high",
+          category: "fraud"
+        });
+      }
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        messages: messages,
-        max_tokens: 500,
-        temperature: 0.7,
-      });
-
-      const response = completion.choices[0].message.content;
+      // Use the AI response from OpenRouter or OpenAI above
+      const response = aiResponse;
       
       // Sentiment analysis for escalation
       const frustrationKeywords = ['frustrated', 'angry', 'terrible', 'awful', 'hate', 'worst', 'useless'];
