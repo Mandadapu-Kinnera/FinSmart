@@ -458,9 +458,59 @@ Always be helpful, professional, and security-conscious. If users seem frustrate
 
     } catch (error) {
       console.error("Chat API error:", error);
-      res.status(500).json({ 
-        message: "I'm having trouble processing your request right now. Please try again or contact our support team.",
-        error: error.message 
+      
+      // Handle specific OpenAI errors
+      if (error.code === 'insufficient_quota') {
+        return res.json({
+          response: "I'm currently experiencing API limitations. However, I can still help you with basic queries:\n\n🔒 For security concerns: Contact our fraud helpline at 1-800-FRAUD-HELP\n💱 USD to INR: Current rate is approximately 1 USD = 83 INR\n📱 Password reset: Go to Settings > Account > Change Password\n💰 Budget help: Visit the Budgets section to create spending limits\n📊 Transaction help: Add transactions in the Transactions section\n\nFor complex queries, please contact our support team directly.",
+          escalate: false,
+          priority: "low",
+          category: "support"
+        });
+      }
+      
+      // Fallback response system
+      const lowerMessage = message.toLowerCase();
+      let response = "I'm experiencing technical difficulties with the AI service. Let me provide some basic assistance:\n\n";
+      
+      if (lowerMessage.includes('fraud') || lowerMessage.includes('suspicious') || lowerMessage.includes('hack')) {
+        response = "🚨 SECURITY ALERT: For immediate assistance with security concerns, please:\n• Call our fraud helpline: 1-800-FRAUD-HELP\n• Email: security@finsmart.com\n• Change your password immediately in Settings\n• Review recent transactions for unauthorized activity";
+        return res.json({
+          response,
+          escalate: true,
+          priority: "high",
+          category: "fraud"
+        });
+      }
+      
+      if (lowerMessage.includes('usd') || lowerMessage.includes('inr') || lowerMessage.includes('convert')) {
+        const numbers = lowerMessage.match(/\d+/g);
+        if (numbers) {
+          const amount = parseFloat(numbers[0]);
+          const converted = (amount * 83).toFixed(2);
+          response = `${amount} USD = ₹${converted} INR (Rate: 1 USD = 83 INR)\n\nNote: This is an approximate rate. For real-time rates, please check financial websites.`;
+        } else {
+          response = "Current exchange rate: 1 USD = 83 INR (approximate)\nPlease specify an amount to convert.";
+        }
+      }
+      else if (lowerMessage.includes('password') || lowerMessage.includes('reset')) {
+        response = "To reset your password:\n1. Go to Settings > Account\n2. Click 'Change Password'\n3. Enter current password\n4. Set new secure password\n5. Save changes";
+      }
+      else if (lowerMessage.includes('budget')) {
+        response = "Budget Management:\n1. Go to Budgets section\n2. Click 'Add Budget'\n3. Set spending limits by category\n4. Track progress on dashboard\n5. Get alerts when approaching limits";
+      }
+      else if (lowerMessage.includes('transaction')) {
+        response = "Transaction Management:\n1. Go to Transactions section\n2. Click 'Add Transaction'\n3. Enter amount and description\n4. Select category (Food, Transport, etc.)\n5. Choose Income or Expense type";
+      }
+      else {
+        response += "• Budget help: Create spending limits in Budgets section\n• Transaction tracking: Add income/expenses in Transactions\n• Bill reminders: Set up in Bills section\n• Currency conversion: Ask 'Convert X USD to INR'\n• Security issues: Call 1-800-FRAUD-HELP immediately\n\nFor detailed assistance, please contact our support team.";
+      }
+      
+      res.json({
+        response,
+        escalate: false,
+        priority: "low",
+        category: "support"
       });
     }
   });
