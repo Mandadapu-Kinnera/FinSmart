@@ -49,7 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Menu, ChartLine, Search, Plus, Trash2, Pencil, Loader2 } from "lucide-react";
+import { Menu, ChartLine, Search, Plus, Trash2, Pencil, Loader2, Download } from "lucide-react";
 
 export default function Transactions() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -216,6 +216,49 @@ export default function Transactions() {
     }
   };
 
+  // Export CSV handler
+  const handleExportCSV = async () => {
+    try {
+      const response = await fetch('/api/export/transactions-csv', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export CSV');
+      }
+
+      // Get the filename from the response header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `transactions-${new Date().toISOString().split('T')[0]}.csv`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Export successful",
+        description: "Your transactions have been exported to CSV successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: "Failed to export transactions. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Filter transactions by search term
   const filteredTransactions = transactions?.filter(transaction => {
     if (!searchTerm) return true;
@@ -307,12 +350,20 @@ export default function Transactions() {
                 />
               </div>
 
-              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" /> Add Transaction
-                  </Button>
-                </DialogTrigger>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={handleExportCSV}
+                >
+                  <Download className="mr-2 h-4 w-4" /> Export CSV
+                </Button>
+                
+                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" /> Add Transaction
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Add New Transaction</DialogTitle>
@@ -689,9 +740,248 @@ export default function Transactions() {
                   </DialogFooter>
                 </form>
               </Form>
-            </DialogContent>
-          </Dialog>
+                </DialogContent>
+              </Dialog>
+              </div>
+            </div>
+          </div>
+
+          {/* Transaction List Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <ChartLine className="mr-2 h-5 w-5" />
+                Recent Transactions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Transaction</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedTransactions && sortedTransactions.length > 0 ? (
+                        sortedTransactions.map((transaction) => {
+                          const category = categories?.find(c => c.id === transaction.categoryId);
+                          return (
+                            <TableRow key={transaction.id}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium text-gray-900">{transaction.description}</p>
+                                  <p className="text-sm text-gray-500">{transaction.merchant}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {category && (
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
+                                    {category.name}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>{formatDate(transaction.date)}</TableCell>
+                              <TableCell className={`text-right font-medium ${transaction.isExpense ? 'text-red-500' : 'text-green-500'}`}>
+                                {transaction.isExpense ? '-' : '+'}₹{transaction.amount.toLocaleString('en-IN')}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => handleEditClick(transaction)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => handleDeleteClick(transaction.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center h-24">
+                            <p className="text-gray-500">No transactions found</p>
+                            {searchTerm && (
+                              <p className="text-gray-400 text-sm mt-1">
+                                Try adjusting your search term
+                              </p>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
         </main>
+
+        {/* Edit Transaction Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Transaction</DialogTitle>
+            </DialogHeader>
+
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Transaction description" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="merchant"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Merchant</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Merchant name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amount</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field}
+                            value={field.value instanceof Date 
+                              ? field.value.toISOString().split('T')[0] 
+                              : ""} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={editForm.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories?.map((category) => (
+                            <SelectItem 
+                              key={category.id} 
+                              value={category.id.toString()}
+                            >
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="isExpense"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel>Transaction Type</FormLabel>
+                        <FormDescription>
+                          {field.value ? "Expense (money out)" : "Income (money in)"}
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button type="submit" disabled={updateMutation.isPending}>
+                    {updateMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating...
+                      </>
+                    ) : (
+                      "Update Transaction"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

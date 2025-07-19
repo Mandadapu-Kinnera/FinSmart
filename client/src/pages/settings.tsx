@@ -206,6 +206,49 @@ export default function Settings() {
     logoutMutation.mutate();
   };
 
+  // Export data handler
+  const handleExportData = async () => {
+    try {
+      const response = await fetch('/api/export/data', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export data');
+      }
+
+      // Get the filename from the response header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `finsmart-data-${new Date().toISOString().split('T')[0]}.json`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Export successful",
+        description: "Your financial data has been downloaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: "Failed to export your data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -384,7 +427,12 @@ export default function Settings() {
                         Download all your financial data and settings
                       </p>
                     </div>
-                    <Button variant="outline">Export</Button>
+                    <Button 
+                      variant="outline"
+                      onClick={handleExportData}
+                    >
+                      Export
+                    </Button>
                   </div>
 
                   <div className="flex justify-between items-center p-4 border rounded-lg">

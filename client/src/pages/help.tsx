@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Chatbot } from "@/components/chatbot/chatbot";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 import {
   Card,
   CardContent,
@@ -26,6 +27,50 @@ export default function Help() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState("chatbot");
   const [location] = useLocation();
+  const { toast } = useToast();
+
+  // Download user guide handler
+  const handleDownloadGuide = async () => {
+    try {
+      const response = await fetch('/api/export/guide', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download guide');
+      }
+
+      // Get the filename from the response header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `finsmart-user-guide-${new Date().toISOString().split('T')[0]}.txt`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Download successful",
+        description: "User guide has been downloaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download the user guide. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   
   useEffect(() => {
     // Check URL for tab parameter
@@ -280,7 +325,10 @@ export default function Help() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex flex-col space-y-4 items-center">
-                  <Button variant="outline">
+                  <Button 
+                    variant="outline"
+                    onClick={handleDownloadGuide}
+                  >
                     <FileText className="mr-2 h-4 w-4" />
                     Download Full Guide
                   </Button>

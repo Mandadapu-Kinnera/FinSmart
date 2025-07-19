@@ -363,6 +363,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export data endpoint
+  app.get("/api/export/data", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const user = req.user;
+      const userId = user.id;
+
+      // Get all user data
+      const transactions = await storage.getTransactionsByUserId(userId);
+      const budgets = await storage.getBudgetsByUserId(userId);
+      const bills = await storage.getBillsByUserId(userId);
+      const subscriptions = await storage.getSubscriptionsByUserId(userId);
+      const goals = await storage.getGoalsByUserId(userId);
+
+      // Create comprehensive export data
+      const exportData = {
+        user: {
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email
+        },
+        transactions: transactions || [],
+        budgets: budgets || [],
+        bills: bills || [],
+        subscriptions: subscriptions || [],
+        goals: goals || [],
+        exportDate: new Date().toISOString(),
+        totalTransactions: (transactions || []).length,
+        totalBudgets: (budgets || []).length,
+        totalBills: (bills || []).length,
+        summary: {
+          totalIncome: (transactions || [])
+            .filter(t => t.type === 'income')
+            .reduce((sum, t) => sum + t.amount, 0),
+          totalExpenses: (transactions || [])
+            .filter(t => t.type === 'expense')
+            .reduce((sum, t) => sum + t.amount, 0),
+          totalBudgetAmount: (budgets || [])
+            .reduce((sum, b) => sum + b.amount, 0),
+          monthlyBillTotal: (bills || [])
+            .reduce((sum, b) => sum + b.amount, 0),
+        }
+      };
+
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="finsmart-data-${new Date().toISOString().split('T')[0]}.json"`);
+      
+      res.json(exportData);
+    } catch (error) {
+      console.error("Export error:", error);
+      res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
+  // Export transactions as CSV endpoint
+  app.get("/api/export/transactions-csv", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const userId = req.user.id;
+      const transactions = await storage.getTransactionsByUserId(userId);
+
+      if (!transactions || transactions.length === 0) {
+        return res.status(404).json({ error: "No transactions found" });
+      }
+
+      // Convert transactions to CSV
+      const csvHeaders = ['Date', 'Description', 'Amount', 'Type', 'Category'];
+      const csvRows = transactions.map(t => [
+        new Date(t.date).toISOString().split('T')[0],
+        `"${t.description || ''}"`,
+        t.amount,
+        t.type,
+        t.category || ''
+      ]);
+
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvRows.map(row => row.join(','))
+      ].join('\n');
+
+      // Set headers for CSV download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="transactions-${new Date().toISOString().split('T')[0]}.csv"`);
+      
+      res.send(csvContent);
+    } catch (error) {
+      console.error("CSV export error:", error);
+      res.status(500).json({ error: "Failed to export CSV" });
+    }
+  });
+
+  // Generate and download user guide
+  app.get("/api/export/guide", async (req, res) => {
+    try {
+      const userGuide = {
+        title: "FinSmart Complete User Guide",
+        version: "1.0",
+        date: new Date().toISOString().split('T')[0],
+        content: `# FinSmart Complete User Guide
+
+## Getting Started
+Welcome to FinSmart - your comprehensive financial management platform.
+1. Create your account and complete the setup process
+2. Add your first transaction to start tracking expenses
+3. Set up budgets to control spending in different categories
+4. Configure bill reminders for recurring payments
+
+## Dashboard Overview
+The dashboard provides a complete overview of your financial health:
+• Total balance and monthly income/expense summary
+• Recent transactions and upcoming bill payments
+• Budget progress and spending insights
+• Quick actions to add transactions or pay bills
+
+## Transactions Management
+Track all your financial activities:
+• Add income and expense transactions
+• Categorize transactions for better organization
+• Use the search and filter features to find specific records
+• Export transaction data for external analysis
+
+## Budget Planning
+Create and manage budgets effectively:
+• Set spending limits for different categories
+• Monitor progress with visual indicators
+• Receive alerts when approaching limits
+• Adjust budgets based on spending patterns
+
+## Bill Management
+Never miss a payment again:
+• Add recurring bills with due dates
+• Set up payment reminders
+• Track payment history
+• Manage utility, rent, and subscription payments
+
+## Goals & Savings
+Achieve your financial objectives:
+• Set savings goals with target amounts
+• Track progress towards your goals
+• Get motivational insights and tips
+• Plan for major purchases or emergencies
+
+## AI Assistant
+Get intelligent help with your finances:
+• Ask questions about budgeting and saving
+• Get currency conversion (USD to INR)
+• Report security concerns for immediate assistance
+• Receive personalized financial advice
+
+## Security & Privacy
+Your financial data is protected:
+• Bank-level encryption for all data
+• Secure authentication and session management
+• Regular security updates and monitoring
+• Contact fraud helpline: 1-800-FRAUD-HELP for security concerns
+
+## Support
+Need help? Contact us:
+• Email: support@finsmart.com
+• Phone: 1-800-FINSMART
+• Live Chat: Available 24/7 through the AI Assistant
+• Emergency Security Line: 1-800-FRAUD-HELP
+`
+      };
+
+      // Set headers for text file download
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="finsmart-user-guide-${userGuide.date}.txt"`);
+      
+      res.send(userGuide.content);
+    } catch (error) {
+      console.error("Guide export error:", error);
+      res.status(500).json({ error: "Failed to generate user guide" });
+    }
+  });
+
   // AI Chat API for help & support
   app.post("/api/chat", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
