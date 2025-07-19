@@ -508,6 +508,7 @@ export default function Transactions() {
                   </Form>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
           </div>
 
@@ -740,11 +741,8 @@ export default function Transactions() {
                   </DialogFooter>
                 </form>
               </Form>
-                </DialogContent>
-              </Dialog>
-              </div>
-            </div>
-          </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Transaction List Card */}
           <Card>
@@ -834,10 +832,8 @@ export default function Transactions() {
             </CardContent>
           </Card>
 
-        </main>
-
-        {/* Edit Transaction Dialog */}
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          {/* Edit Transaction Dialog */}
+          <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Transaction</DialogTitle>
@@ -982,6 +978,7 @@ export default function Transactions() {
             </Form>
           </DialogContent>
         </Dialog>
+        </main>
       </div>
     </div>
   );
