@@ -167,6 +167,40 @@ export default function Help() {
                         password, and notification preferences.
                       </p>
                     </div>
+                    
+                    <div className="p-4 border rounded-lg bg-red-50 border-red-200">
+                      <h3 className="font-medium text-red-900 mb-2">🔒 How do I report suspicious activity?</h3>
+                      <p className="text-red-800">
+                        If you notice unauthorized transactions or suspicious account activity, immediately use our AI chatbot 
+                        with keywords like "suspicious transaction" or "fraud". The system will automatically escalate your 
+                        concern to our security team. You can also call our fraud helpline: 1-800-FRAUD-HELP
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-medium text-gray-900 mb-2">How do I convert USD to INR?</h3>
+                      <p className="text-gray-600">
+                        Our AI assistant can convert currencies in real-time. Simply ask "Convert X USD to INR" in the chat, 
+                        and you'll get the current exchange rate and converted amount. The rates are updated regularly.
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-medium text-gray-900 mb-2">What is KYC and how do I update it?</h3>
+                      <p className="text-gray-600">
+                        KYC (Know Your Customer) verification helps secure your account. To update your KYC information, 
+                        go to Settings &rarr; Account Verification and follow the prompts to upload required documents.
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 border rounded-lg bg-orange-50 border-orange-200">
+                      <h3 className="font-medium text-orange-900 mb-2">⚠️ When will I be escalated to human support?</h3>
+                      <p className="text-orange-800">
+                        Our AI automatically escalates conversations to human agents when: you express frustration, 
+                        report security concerns, or ask complex questions beyond basic FAQ topics. You'll be notified 
+                        when escalation occurs and can expect follow-up within 24 hours.
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
                 <CardFooter className="flex flex-col space-y-4 items-center">

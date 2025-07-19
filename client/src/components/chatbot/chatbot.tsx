@@ -1,269 +1,320 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, DollarSign, RefreshCcw } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Send, MessageSquare, Bot, User, AlertTriangle, Shield, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
   text: string;
-  sender: "user" | "bot";
+  isBot: boolean;
   timestamp: Date;
+  escalate?: boolean;
+  priority?: string;
+  category?: string;
+}
+
+interface ChatResponse {
+  response: string;
+  escalate: boolean;
+  priority: string;
+  category: string;
 }
 
 export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: "welcome",
-      text: "Hi there! I'm FinSmart Assistant. How can I help you today? You can ask me questions about the app or convert USD to INR.",
-      sender: "bot",
+      id: "1",
+      text: "Hello! I'm your FinSmart AI assistant powered by advanced AI. I can help you with:\n\n🔒 Account security & fraud concerns\n💰 Budget and financial planning\n📊 Transaction management\n📱 App navigation\n💱 Currency conversion (USD ↔ INR)\n\nI'm equipped with fraud detection and can escalate urgent matters to our human agents. How can I assist you today?",
+      isBot: true,
       timestamp: new Date(),
     },
   ]);
-  const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [inputText, setInputText] = useState("");
+  const [conversationContext, setConversationContext] = useState<Array<{role: string, content: string}>>([]);
+  const { toast } = useToast();
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Conversion rate (this would typically come from an API)
-  const usdToInrRate = 83.16; // Current exchange rate as of April 2023
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-    // Add user message
+  const chatMutation = useMutation({
+    mutationFn: async (data: { message: string; context: Array<{role: string, content: string}> }) => {
+      const res = await apiRequest("POST", "/api/chat", data);
+      return await res.json();
+    },
+    onSuccess: (data: ChatResponse) => {
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: data.response,
+        isBot: true,
+        timestamp: new Date(),
+        escalate: data.escalate,
+        priority: data.priority,
+        category: data.category
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+      
+      // Update conversation context
+      setConversationContext(prev => [
+        ...prev,
+        { role: "user", content: inputText },
+        { role: "assistant", content: data.response }
+      ]);
+
+      // Show escalation alerts
+      if (data.escalate) {
+        if (data.category === "fraud") {
+          toast({
+            title: "Security Alert",
+            description: "Your concern has been escalated to our security team. Please follow the provided instructions immediately.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Escalated to Human Agent",
+            description: "Your query has been forwarded to our human support team for better assistance.",
+          });
+        }
+      }
+    },
+    onError: (error: Error) => {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "I'm experiencing technical difficulties. Please try again in a moment, or contact our support team directly if this persists.",
+        isBot: true,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "Connection Error",
+        description: "Unable to connect to AI assistant. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || chatMutation.isPending) return;
+
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue,
-      sender: "user",
+      text: inputText,
+      isBot: false,
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-    setIsTyping(true);
+    setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputText;
+    setInputText("");
 
-    // Process the message
-    setTimeout(() => {
-      const response = processUserMessage(userMessage.text);
-      setMessages((prev) => [...prev, response]);
-      setIsTyping(false);
-    }, 500);
+    // Call the AI chat API
+    chatMutation.mutate({
+      message: currentInput,
+      context: conversationContext
+    });
   };
 
-  const processUserMessage = (text: string): Message => {
-    // Check for currency conversion
-    const usdRegex = /(\$?\d+(\.\d+)?)\s?(usd|dollar|dollars)?(\s?to\s?inr|\s?in\s?rupees|\s?in\s?rs)/i;
-    const match = text.match(usdRegex);
-
-    if (match) {
-      const amount = parseFloat(match[1].replace('$', ''));
-      const inrAmount = (amount * usdToInrRate).toFixed(2);
-      return {
-        id: Date.now().toString(),
-        text: `$${amount} USD is approximately ₹${inrAmount} INR at the current exchange rate.`,
-        sender: "bot",
-        timestamp: new Date(),
-      };
-    }
-
-    // Common FAQs
-    if (text.toLowerCase().includes("budget") || text.toLowerCase().includes("how to budget")) {
-      return {
-        id: Date.now().toString(),
-        text: "To create a budget, go to the Budgets section and click 'Add Budget'. You can set amounts for different categories and track your spending against these limits.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-    }
-
-    if (text.toLowerCase().includes("transaction") || text.toLowerCase().includes("add transaction")) {
-      return {
-        id: Date.now().toString(),
-        text: "To add a transaction, go to the Transactions page and click the 'Add Transaction' button. Fill in the details like amount, description, category, and date.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-    }
-
-    if (text.toLowerCase().includes("bill") || text.toLowerCase().includes("payment reminder")) {
-      return {
-        id: Date.now().toString(),
-        text: "You can manage your bills in the Bills section. Add a new bill with amount and due date to receive reminders before the payment is due.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-    }
-
-    if (text.toLowerCase().includes("subscription") || text.toLowerCase().includes("recurring payment")) {
-      return {
-        id: Date.now().toString(),
-        text: "Track your subscriptions in the Subscriptions section. Add your recurring payments to see your monthly subscription expenses and get insights on potential savings.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-    }
-
-    if (text.toLowerCase().includes("goal") || text.toLowerCase().includes("saving goal")) {
-      return {
-        id: Date.now().toString(),
-        text: "Set financial goals in the Goals section. Define a target amount and deadline, and the app will help you track your progress and suggest saving strategies.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-    }
-
-    if (text.toLowerCase().includes("profile") || text.toLowerCase().includes("account settings")) {
-      return {
-        id: Date.now().toString(),
-        text: "You can update your profile information in Settings > Account. You can change personal details, password, and notification preferences.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-    }
-
-    // Currency converter instruction
-    if (text.toLowerCase().includes("convert") || text.toLowerCase().includes("exchange") || text.toLowerCase().includes("usd to inr")) {
-      return {
-        id: Date.now().toString(),
-        text: "I can convert USD to INR for you. Just type something like '10 USD to INR' or '100 dollars in rupees'.",
-        sender: "bot",
-        timestamp: new Date(),
-      };
-    }
-
-    // Default response
-    return {
-      id: Date.now().toString(),
-      text: "I'm here to help with questions about using FinSmart and converting USD to INR. Can you please ask about specific features or try a currency conversion?",
-      sender: "bot",
-      timestamp: new Date(),
-    };
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const clearChat = () => {
-    setMessages([
-      {
-        id: "welcome",
-        text: "Hi there! I'm FinSmart Assistant. How can I help you today? You can ask me questions about the app or convert USD to INR.",
-        sender: "bot",
-        timestamp: new Date(),
-      },
-    ]);
+  const getQuickActions = () => {
+    const actions = [
+      "How do I reset my password?",
+      "Convert 100 USD to INR",
+      "How to create a budget?",
+      "Help with suspicious transaction",
+      "Set up bill reminders"
+    ];
+    
+    return actions.map((action, index) => (
+      <Button
+        key={index}
+        variant="outline"
+        size="sm"
+        className="text-xs"
+        onClick={() => {
+          setInputText(action);
+          // Auto-send after a brief delay to show the text was set
+          setTimeout(() => handleSendMessage(), 100);
+        }}
+      >
+        {action}
+      </Button>
+    ));
   };
 
   return (
-    <Card className="w-full h-[500px] flex flex-col">
-      <CardHeader className="border-b pb-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Avatar className="h-8 w-8 bg-primary">
-              <AvatarFallback className="bg-primary text-white">AI</AvatarFallback>
-            </Avatar>
-            <CardTitle className="text-lg">FinSmart Assistant</CardTitle>
+    <div className="space-y-4">
+      {/* Quick Actions */}
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-medium mb-3">Quick Actions</h3>
+          <div className="flex flex-wrap gap-2">
+            {getQuickActions()}
           </div>
-          <Button variant="ghost" size="icon" onClick={clearChat}>
-            <RefreshCcw className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 p-0 overflow-hidden">
-        <ScrollArea className="h-[360px] p-4">
-          <div className="space-y-4">
+        </CardContent>
+      </Card>
+
+      {/* Main Chat Interface */}
+      <Card className="h-[600px] flex flex-col">
+        <CardHeader className="flex flex-row items-center space-y-0 pb-4">
+          <div className="flex items-center space-x-2">
+            <Bot className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">FinSmart AI Assistant</CardTitle>
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
+              AI-Powered
+            </Badge>
+          </div>
+          <div className="ml-auto flex items-center space-x-2">
+            <Badge variant="secondary" className="bg-green-100 text-green-800">
+              Online
+            </Badge>
+            <Shield className="h-4 w-4 text-green-600" />
+          </div>
+        </CardHeader>
+        
+        <CardContent className="flex-1 flex flex-col p-0">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.sender === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
+              <div key={message.id} className="space-y-2">
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
-                    message.sender === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  }`}
+                  className={`flex ${message.isBot ? "justify-start" : "justify-end"}`}
                 >
-                  {message.sender === "bot" && (
-                    <div className="flex items-center mb-1">
-                      <Bot className="h-3 w-3 mr-1" />
-                      <span className="text-xs font-medium">Assistant</span>
-                      <span className="text-xs ml-auto opacity-70">
-                        {formatTime(message.timestamp)}
-                      </span>
+                  <div
+                    className={`flex max-w-[80%] ${
+                      message.isBot ? "flex-row" : "flex-row-reverse"
+                    } items-start space-x-2`}
+                  >
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                        message.isBot 
+                          ? "bg-primary text-white" 
+                          : "bg-gray-200 text-gray-600"
+                      }`}
+                    >
+                      {message.isBot ? (
+                        <Bot className="h-4 w-4" />
+                      ) : (
+                        <User className="h-4 w-4" />
+                      )}
                     </div>
-                  )}
-                  <div className="text-sm">{message.text}</div>
-                  {message.sender === "user" && (
-                    <div className="flex justify-end mt-1">
-                      <span className="text-xs opacity-70">
-                        {formatTime(message.timestamp)}
-                      </span>
+                    <div
+                      className={`rounded-lg px-4 py-2 ${
+                        message.isBot
+                          ? "bg-gray-100 text-gray-800"
+                          : "bg-primary text-white"
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-line">{message.text}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className={`text-xs ${
+                          message.isBot ? "text-gray-500" : "text-blue-100"
+                        }`}>
+                          {message.timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        {message.priority && (
+                          <Badge 
+                            variant={message.priority === "high" ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
+                            {message.priority} priority
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
+                
+                {/* Escalation Alert */}
+                {message.escalate && message.category === "fraud" && (
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800">
+                      <strong>Security Alert:</strong> This issue has been escalated to our fraud prevention team. 
+                      For immediate assistance, call our 24/7 security hotline.
+                      <div className="flex items-center mt-2 space-x-2">
+                        <Phone className="h-4 w-4" />
+                        <span className="font-semibold">1-800-FRAUD-HELP</span>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {message.escalate && message.category === "support" && (
+                  <Alert className="border-orange-200 bg-orange-50">
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    <AlertDescription className="text-orange-800">
+                      This conversation has been escalated to our human support team for specialized assistance.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             ))}
-            {isTyping && (
+            
+            {chatMutation.isPending && (
               <div className="flex justify-start">
-                <div className="max-w-[80%] bg-muted rounded-lg p-3">
-                  <div className="flex space-x-1">
-                    <div className="h-2 w-2 bg-zinc-400 rounded-full animate-bounce"></div>
-                    <div className="h-2 w-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-.15s]"></div>
-                    <div className="h-2 w-2 bg-zinc-400 rounded-full animate-bounce [animation-delay:-.3s]"></div>
+                <div className="flex items-start space-x-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="bg-gray-100 rounded-lg px-4 py-2">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">AI is thinking...</p>
                   </div>
                 </div>
               </div>
             )}
+            
             <div ref={messagesEndRef} />
           </div>
-        </ScrollArea>
-      </CardContent>
-      <CardFooter className="border-t pt-3">
-        <form onSubmit={handleSubmit} className="flex w-full space-x-2">
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask a question or convert USD to INR..."
-            className="flex-1"
-          />
-          <Button type="submit" size="icon" disabled={isTyping}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
-      </CardFooter>
-      <div className="px-4 py-2 bg-gray-50 text-xs text-gray-500 rounded-b-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <span>Try asking: </span>
-            <Badge variant="outline" className="ml-1 cursor-pointer" onClick={() => setInputValue("How do I create a budget?")}>
-              How do I create a budget?
-            </Badge>
-            <Badge variant="outline" className="ml-1 cursor-pointer" onClick={() => setInputValue("Convert 50 USD to INR")}>
-              Convert 50 USD to INR
-            </Badge>
+          
+          <div className="border-t p-4">
+            <div className="flex space-x-2">
+              <Input
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Ask me anything about FinSmart, report security concerns, or request help..."
+                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                disabled={chatMutation.isPending}
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleSendMessage}
+                disabled={chatMutation.isPending || !inputText.trim()}
+                size="icon"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-gray-500">
+                🔒 Fraud detection • 💱 Currency conversion • 📊 Financial guidance
+              </p>
+              <Badge variant="outline" className="text-xs">
+                Powered by GPT-4o
+              </Badge>
+            </div>
           </div>
-          <div className="flex items-center">
-            <DollarSign className="h-3 w-3 mr-1" />
-            <span>1 USD = ₹{usdToInrRate} INR</span>
-          </div>
-        </div>
-      </div>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

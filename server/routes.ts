@@ -362,6 +362,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Chat API for help & support
+  app.post("/api/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    
+    try {
+      const { message, context = [] } = req.body;
+      
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      // Import OpenAI here to avoid loading it if not needed
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      // Fraud detection keywords
+      const fraudKeywords = [
+        'suspicious transaction', 'unauthorized access', 'someone accessed', 
+        'account compromised', 'strange activity', 'fraud', 'scam', 'hack',
+        'stolen', 'identity theft', 'phishing'
+      ];
+      
+      // Check for fraud concerns
+      const lowerMessage = message.toLowerCase();
+      const isFraudConcern = fraudKeywords.some(keyword => lowerMessage.includes(keyword));
+      
+      if (isFraudConcern) {
+        return res.json({
+          response: "I understand you have security concerns. For your account safety, I'm escalating this to our security team. Please contact our fraud helpline immediately at 1-800-FRAUD-HELP or email security@finsmart.com. In the meantime, consider changing your password and reviewing recent transactions.",
+          escalate: true,
+          priority: "high",
+          category: "fraud"
+        });
+      }
+
+      // Financial FAQ knowledge base
+      const financialContext = `
+You are FinSmart AI Assistant, a helpful financial chatbot for a personal finance management app. You help users with:
+
+1. FAQ RESOLUTION:
+- Password reset: "Go to Settings > Account > Change Password"
+- Account management and KYC updates
+- Understanding interest rates and financial terms
+- App navigation and feature explanations
+
+2. FINANCIAL GUIDANCE:
+- Budget creation and management tips
+- Transaction categorization help
+- Savings goal strategies
+- Bill payment reminders and setup
+- Subscription management advice
+
+3. CURRENCY CONVERSION:
+- Convert USD to INR using current rates (approx 1 USD = 83 INR)
+- Explain exchange rate fluctuations
+
+4. APP FEATURES:
+- Dashboard overview and insights
+- Transaction tracking best practices
+- Budget alerts and notifications
+- Goal setting and progress tracking
+
+Always be helpful, professional, and security-conscious. If users seem frustrated or need complex help, suggest contacting live support.
+`;
+
+      // Build conversation context
+      const messages = [
+        { role: "system", content: financialContext },
+        ...context.slice(-10), // Last 10 messages for context
+        { role: "user", content: message }
+      ];
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: messages,
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const response = completion.choices[0].message.content;
+      
+      // Sentiment analysis for escalation
+      const frustrationKeywords = ['frustrated', 'angry', 'terrible', 'awful', 'hate', 'worst', 'useless'];
+      const isFrustrated = frustrationKeywords.some(keyword => lowerMessage.includes(keyword));
+
+      res.json({
+        response: response,
+        escalate: isFrustrated,
+        priority: isFrustrated ? "medium" : "low",
+        category: "support"
+      });
+
+    } catch (error) {
+      console.error("Chat API error:", error);
+      res.status(500).json({ 
+        message: "I'm having trouble processing your request right now. Please try again or contact our support team.",
+        error: error.message 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
