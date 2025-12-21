@@ -12,17 +12,15 @@ FinSmart is an AI-powered financial assistant that helps users track income and 
 - UI built with Tailwind + Vite
 - Modular code (Client / Server / Shared)
 
----
 
 ## Tech Stack
 
 - **Frontend**: TypeScript, React, Tailwind CSS, Vite
 - **Backend**: Node.js, Express
-- **Database**: In-memory / (can be upgraded)
-- **AI Assistant**: Integrated AI flow (Replit-based)
+- **Database**: MongoDB
+- **AI Assistant**: Integrated AI flow 
 - **Build Tools**: PostCSS, Drizzle, tsconfig
 
----
 
 ## Getting Started
 
