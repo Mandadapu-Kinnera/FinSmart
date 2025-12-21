@@ -1,4 +1,4 @@
-# FinSmart — AI-Powered Personal Finance Assistant
+# FinSmart - AI Powered Personal Finance Assistant
 
 FinSmart is an AI-powered financial assistant that helps users track income and expenses, generate financial insights, and make informed money decisions through a clean, responsive UI and secure backend.
 
