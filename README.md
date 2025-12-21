@@ -31,3 +31,9 @@ git clone https://github.com/Mandadapu-Kinnera/FinSmart.git
 cd FinSmart
 npm install
 npm run dev
+```
+
+## Public Link
+```
+https://financial-fortress--mandadapukinner.replit.app
+```
