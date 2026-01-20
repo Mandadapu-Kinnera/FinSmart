@@ -33,7 +33,3 @@ npm install
 npm run dev
 ```
 
-## Public Link
-```
-https://financial-fortress--mandadapukinner.replit.app
-```
